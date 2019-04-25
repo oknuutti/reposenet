@@ -3,4 +3,4 @@ references/
 *.pyc
 *.pth.tar
 *.out
-
+*.pth

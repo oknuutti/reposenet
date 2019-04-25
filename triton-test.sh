@@ -1,11 +1,18 @@
 #!/bin/bash
-#SBATCH --time=0-00:15:00		# 15 mins
-#SBATCH --mem=10G     			# 10GB of memory
-#SBATCH --gres=gpu:1			# one GPU
-#SBATCH -c 2					# two CPUs
-#SBATCH --constraint='pascal|volta'		# exclude the slowest GPUs
+#SBATCH --time=0-03:59:00		# estimated excution time (~80s/epoch)
+#SBATCH --mem=20G     			# memory needed (~2Gb/core)
+#SBATCH --gres=gpu:1			# GPUs needed
+#SBATCH -c 9				# CPUs needed (~9 per one gpu)
+#SBATCH --constraint='pascal|volta'	# exclude the slowest GPUs
 
+## copy image data to local drive
+mkdir /tmp/$SLURM_JOB_ID
+trap "rm -r /tmp/$SLURM_JOB_ID; exit" TERM EXIT
+tar -xf $WRKDIR/data/cambridge.tar -C /tmp/$SLURM_JOB_ID
+
+## start to process
 cd $WRKDIR/densepose/src
 module load anaconda3
-source activate $WRKDIR/conda/densepose
-srun python3 main.py -d $WRKDIR/data/cambridge -a densenet121 -o adam --lr 1e-4 --wd 0.5 -b 64 --epochs 1
+source activate $WRKDIR/conda/envs/densepose
+srun python3 main.py -d /tmp/$SLURM_JOB_ID/cambridge --cache $WRKDIR/data/models \
+                     -a densenet121 -o adam --lr 1e-4 --wd 1.5 -b 110 --epochs 168 -j 9 --tf 3
