@@ -1,5 +1,6 @@
 import os
-import re
+
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -170,9 +171,13 @@ class PoseDataset(ImageFolder):
                     for line in fh.readlines():
                         row = line.strip('\r\n').split(' ')
                         if len(row) == 8:
-                            samples.append((
-                                os.path.join(self.root, scene_dir, row[0]),
-                                torch.tensor(list(map(float, row[1:])))))
+                            pose = list(map(float, row[1:]))
+                            if np.linalg.norm(pose) < 1000:
+                                samples.append((
+                                    os.path.join(self.root, scene_dir, row[0]),
+                                    torch.tensor(pose)))
+                            else:
+                                print('inexpected meta data at %s: %s' % (scene_dir, row,))
 
         return samples
 
