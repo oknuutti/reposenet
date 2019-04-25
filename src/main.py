@@ -263,7 +263,6 @@ class AverageMeter(object):
     def reset(self):
         self.val = 0
         self.avg = 0
-        self.sum = 0
         self.count = 0
 
     def update(self, val):
@@ -275,9 +274,8 @@ class AverageMeter(object):
             val = np.array([val])
         n = len(val)
         self.val = np.mean(val)
-        self.sum += self.val * n
+        self.avg = self.avg * (self.count / (self.count + n)) + self.val * (n / (self.count + n))
         self.count += n
-        self.avg = self.sum / self.count
 
 
 class MedianMeter(object):
