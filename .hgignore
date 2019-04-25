@@ -1,0 +1,4 @@
+syntax: glob
+references/
+*.pyc
+*.pth.tar
