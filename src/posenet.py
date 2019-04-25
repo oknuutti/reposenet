@@ -87,16 +87,17 @@ class PoseNet(nn.Module):
 
         #         x = self.feature_extractor(x)
 
-        if type(x) is list:
-            x_features = [self.extract_features(xi) for xi in x]
-            x_translations = [self.fc_xyz(xi) for xi in x_features]
-            x_rotations = [self.fc_quat(xi) for xi in x_features]
-            x_poses = [torch.cat((xt, xr), dim=1) for xt, xr in zip(x_translations, x_rotations)]
-        elif torch.is_tensor(x):
-            x_features = self.extract_features(x)
-            x_translations = self.fc_xyz(x_features)
-            x_rotations = self.fc_quat(x_features)
-            x_poses = torch.cat((x_translations, x_rotations), dim=1)
+        # if type(x) is list:
+        #     x_features = [self.extract_features(xi) for xi in x]
+        #     x_translations = [self.fc_xyz(xi) for xi in x_features]
+        #     x_rotations = [self.fc_quat(xi) for xi in x_features]
+        #     x_poses = [torch.cat((xt, xr), dim=1) for xt, xr in zip(x_translations, x_rotations)]
+        # elif torch.is_tensor(x):
+        x_features = self.extract_features(x)
+        x_translations = self.fc_xyz(x_features)
+        x_rotations = self.fc_quat(x_features)
+        x_rotations = F.normalize(x_rotations, p=2, dim=1)
+        x_poses = torch.cat((x_translations, x_rotations), dim=1)
 
         return x_poses
 

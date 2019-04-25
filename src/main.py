@@ -193,7 +193,8 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
         positions.update(pos)
         orientations.update(orient)
         losses.update(loss.data)
-        #mem_usage = torch.cuda.max_memory_allocated() / 1024 ** 3  *1.18
+        #mem_usage = torch.cuda.max_memory_allocated() / 1024 ** 3  *1.13 + 0.78
+        #mem_usage = mem_usage*1.13 + 0.78  # heuristic correction
 
         # tried to clean up in hope that frees gpu mem before next iteration => did not help
         #optimizer.zero_grad()
