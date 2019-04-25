@@ -193,7 +193,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
         positions.update(pos)
         orientations.update(orient)
         losses.update(loss.data)
-        mem_usage = torch.cuda.max_memory_allocated() / 1024 ** 3
+        #mem_usage = torch.cuda.max_memory_allocated() / 1024 ** 3  *1.18
 
         # tried to clean up in hope that frees gpu mem before next iteration => did not help
         #optimizer.zero_grad()
@@ -206,13 +206,12 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
 
         if i % args.print_freq == 0:
             print((('Test [{1}/{2}]' if validate_only else 'Epoch: [{0}][{1}/{2}]\t') +
-                  ' GPU Mem: {mem_usage:.2f}GB\t'
-                  ' Load Time: {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  ' Proc Time: {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  ' Load: {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  ' Proc: {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   ' Loss: {loss.val:.4f} ({loss.avg:.4f})\t'
-                  ' Position: {pos.val:.3f} ({pos.median:.3f})\t'
-                  ' Orientation: {orient.val:.3f} ({orient.median:.3f})').format(
-                   epoch, i, len(train_loader), mem_usage=mem_usage, batch_time=batch_time,
+                  ' Pos: {pos.val:.3f} ({pos.median:.3f})\t'
+                  ' Ori: {orient.val:.3f} ({orient.median:.3f})').format(
+                   epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses, pos=positions, orient=orientations))
 
     return losses.avg
@@ -274,9 +273,10 @@ class AverageMeter(object):
             val = np.array(val)
         if not isinstance(val, np.ndarray):
             val = np.array([val])
+        n = len(val)
         self.val = np.mean(val)
-        self.sum += np.sum(val)
-        self.count += len(val)
+        self.sum += self.val * n
+        self.count += n
         self.avg = self.sum / self.count
 
 
