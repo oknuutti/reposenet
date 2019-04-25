@@ -20,7 +20,7 @@ from posenet import PoseNet, PoseNetCriterion, PoseDataset
 DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge'
 
 
-# Basic structure taken from https://github.com/pytorch/examples/imagenet/main.py
+# Basic structure taken from https://github.com/pytorch/examples/blob/master/imagenet/main.py
 
 model_names = sorted(name for name in torchvision.models.__dict__
     if name.islower() and not name.startswith("__")
@@ -146,10 +146,11 @@ def main():
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, validate_only=False):
-    batch_time = Meter()
-    losses = Meter()
-    positions = Meter()
-    orientations = Meter()
+    data_time = AverageMeter()
+    batch_time = AverageMeter()
+    losses = AverageMeter()
+    positions = MedianMeter()
+    orientations = MedianMeter()
 
     if validate_only:
         # switch to evaluate mode
@@ -165,6 +166,10 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
 
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
+
+        # measure elapsed data loading time
+        data_time.update(time.time() - end)
+        end = time.time()
 
         # compute output
         output = model(input_var)
@@ -188,19 +193,20 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
         #del loss
         #del output
 
-        # measure elapsed time
+        # measure elapsed processing time
         batch_time.update(time.time() - end)
         end = time.time()
 
         if i % args.print_freq == 0:
             print((('Test [{1}/{2}]' if validate_only else 'Epoch: [{0}][{1}/{2}]\t') +
                   ' GPU Mem: {mem_usage:.2f}GB\t'
-                  ' Time: {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  ' Load Time: {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  ' Proc Time: {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   ' Loss: {loss.val:.4f} ({loss.avg:.4f})\t'
                   ' Position: {pos.val:.3f} ({pos.median:.3f})\t'
                   ' Orientation: {orient.val:.3f} ({orient.median:.3f})').format(
                    epoch, i, len(train_loader), mem_usage=mem_usage, batch_time=batch_time,
-                   loss=losses, pos=positions, orient=orientations))
+                   data_time=data_time, loss=losses, pos=positions, orient=orientations))
 
     return losses.avg
 
@@ -243,14 +249,38 @@ def adjust_learning_rate(optimizer, epoch):
         param_group['lr'] = lr
 
 
-class Meter(object):
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val):
+        if torch.is_tensor(val):
+            val = val.detach().cpu().numpy()
+        if isinstance(val, (list, tuple)):
+            val = np.array(val)
+        if not isinstance(val, np.ndarray):
+            val = np.array([val])
+        self.val = np.mean(val)
+        self.sum += np.sum(val)
+        self.count += len(val)
+        self.avg = self.sum / self.count
+
+
+class MedianMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
         self.reset()
 
     @property
     def val(self):
-        return self.values[-1]
+        return np.median(self.recent_values)
 
     @property
     def sum(self):
@@ -269,16 +299,19 @@ class Meter(object):
         return np.median(self.values)
 
     def reset(self):
+        self.recent_values = []
         self.values = []
 
     def update(self, val):
         if torch.is_tensor(val):
             val = val.detach().cpu().numpy()
+        if isinstance(val, (list, tuple)):
+            val = np.array(val)
+        if not isinstance(val, np.ndarray):
+            val = np.array([val])
 
-        try:
-            self.values.extend(val)
-        except:
-            self.values.append(val)
+        self.recent_values = val
+        self.values.extend(val)
 
 
 
