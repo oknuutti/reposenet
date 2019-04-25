@@ -160,13 +160,16 @@ class PoseDataset(ImageFolder):
 
     def load_samples(self):
         samples = []
-        with open(os.path.join(self.root, self.label_file), 'r') as fh:
-            for line in fh.readlines():
-                row = line.strip('\r\n').split(' ')
-                if len(row) == 8:
-                    samples.append((
-                        os.path.join(self.root, row[0]),
-                        torch.tensor(list(map(float, row[1:])))))
+        for scene_dir in os.listdir(self.root):
+            label_file = os.path.join(self.root, scene_dir, self.label_file)
+            if os.path.exists(label_file):
+                with open(label_file, 'r') as fh:
+                    for line in fh.readlines():
+                        row = line.strip('\r\n').split(' ')
+                        if len(row) == 8:
+                            samples.append((
+                                os.path.join(self.root, scene_dir, row[0]),
+                                torch.tensor(list(map(float, row[1:])))))
 
         return samples
 
