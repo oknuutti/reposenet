@@ -17,7 +17,7 @@ from posenet import PoseNet, PoseNetCriterion, PoseDataset
 
 
 #DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/cambridge')
-DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge'
+DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\KingsCollege'
 CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
 
 
@@ -106,12 +106,12 @@ def main():
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    # define loss function (criterion) and pptimizer
-    criterion = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
+    # # define loss function (criterion) and pptimizer
+    # criterion = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
 
     # evaluate model only
     if args.evaluate:
-        validate(val_loader, model, criterion)
+        validate(val_loader, model)
         return
 
     # initialize optimizer
@@ -126,18 +126,18 @@ def main():
         assert False, 'Invalid optimizer: %s' % args.optimizer
 
     model.to(device)
-    criterion.to(device)
+    #criterion.to(device)
 
     # training loop
     for epoch in range(args.start_epoch, args.epochs):
         # adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device)
+        train(train_loader, model, optimizer, epoch, device)
 
         # evaluate on validation set
         if (epoch+1) % args.test_freq == 0:
-            loss = validate(val_loader, model, criterion, device)
+            loss = validate(val_loader, model, device)
 
             # remember best loss and save checkpoint
             is_best = loss < best_loss
@@ -152,7 +152,7 @@ def main():
         print('=====\n')
 
 
-def train(train_loader, model, criterion, optimizer, epoch, device, validate_only=False):
+def train(train_loader, model, optimizer, epoch, device, validate_only=False):
     data_time = AverageMeter()
     batch_time = AverageMeter()
     losses = AverageMeter()
@@ -180,7 +180,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
 
         # compute output
         output = model(input_var)
-        loss = criterion(output, target_var)
+        loss = model.cost(output, target_var)
 
         # compute gradient and optimize params
         if not validate_only:
@@ -196,11 +196,6 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
         #mem_usage = torch.cuda.max_memory_allocated() / 1024 ** 3  *1.13 + 0.78
         #mem_usage = mem_usage*1.13 + 0.78  # heuristic correction
 
-        # tried to clean up in hope that frees gpu mem before next iteration => did not help
-        #optimizer.zero_grad()
-        #del loss
-        #del output
-
         # measure elapsed processing time
         batch_time.update(time.time() - end)
         end = time.time()
@@ -211,16 +206,18 @@ def train(train_loader, model, criterion, optimizer, epoch, device, validate_onl
                   ' Proc: {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   ' Loss: {loss.val:.4f} ({loss.avg:.4f})\t'
                   ' Pos: {pos.val:.3f} ({pos.median:.3f})\t'
-                  ' Ori: {orient.val:.3f} ({orient.median:.3f})').format(
+                  ' Ori: {orient.val:.3f} ({orient.median:.3f})'
+                  ' CF: ({cost_sx:.3f}, {cost_sq:.3f})').format(
                    epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses, pos=positions, orient=orientations))
+                   data_time=data_time, loss=losses, pos=positions, orient=orientations,
+                   cost_sx=float(model.cost_fn.sx.data), cost_sq=float(model.cost_fn.sq.data)))
 
     return losses.avg
 
 
-def validate(val_loader, model, criterion, device):
+def validate(val_loader, model, device):
     with torch.no_grad():
-        result = train(val_loader, model, criterion, None, None, device, validate_only=True)
+        result = train(val_loader, model, None, None, device, validate_only=True)
     return result
 
 

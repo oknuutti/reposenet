@@ -75,6 +75,9 @@ class PoseNet(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias.data, 0)
 
+        # Cost function has trainable parameters so included here
+        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
+
     def extract_features(self, x):
         x_features = self.feature_extractor(x)
         x_features = self.fc_feat(x_features)
@@ -102,16 +105,19 @@ class PoseNet(nn.Module):
 
         return x_poses
 
+    def cost(self, x, y):
+        return self.cost_fn(x, y)
+
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, stereo=False, beta=512.0, learn_uncertainties=False, sx=0.0, sq=-3.0):
+    def __init__(self, stereo=False, beta=500.0, learn_uncertainties=False, sx=0.0, sq=-3.0):
         super(PoseNetCriterion, self).__init__()
         self.stereo = stereo
         self.loss_fn = nn.L1Loss()
         self.learn_uncertainties = learn_uncertainties
         if learn_uncertainties:
-            self.sx = nn.Parameter(torch.Tensor([sx]), requires_grad=learn_uncertainties)
-            self.sq = nn.Parameter(torch.Tensor([sq]), requires_grad=learn_uncertainties)
+            self.sx = nn.Parameter(torch.Tensor([sx]))
+            self.sq = nn.Parameter(torch.Tensor([sq]))
             self.beta = 1.0
         else:
             self.sx = 0.0
@@ -138,10 +144,10 @@ class PoseNetCriterion(nn.Module):
         else:
             # Translation loss
             loss += torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx
+
             # Rotation loss
-            loss += torch.exp(-self.sq) * self.beta * self.loss_fn(x[:, 3:], y[:, 3:]) + self.sq
-        #         print('x = \n{}'.format(x[0]))
-        #         print('y = \n{}'.format(y[0]))
+            xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
+            loss += torch.exp(-self.sq) * self.beta * self.loss_fn(xq, y[:, 3:]) + self.sq
         return loss
 
 
@@ -164,14 +170,16 @@ class PoseDataset(ImageFolder):
 
     def load_samples(self):
         samples = []
-        for scene_dir in os.listdir(self.root):
+        label_file = os.path.join(self.root, self.label_file)
+        for scene_dir in ([''] if os.path.exists(label_file) else os.listdir(self.root)):
             label_file = os.path.join(self.root, scene_dir, self.label_file)
             if os.path.exists(label_file):
                 with open(label_file, 'r') as fh:
                     for line in fh.readlines():
                         row = line.strip('\r\n').split(' ')
                         if len(row) == 8:
-                            pose = list(map(float, row[1:]))
+                            pose = np.array(list(map(float, row[1:]))).astype('f4')
+                            pose[3:] *= np.sign(pose[3])/np.linalg.norm(pose[3:])  # normalize quaternion
                             if np.linalg.norm(pose) < 1000:
                                 samples.append((
                                     os.path.join(self.root, scene_dir, row[0]),
