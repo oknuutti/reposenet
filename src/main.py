@@ -18,6 +18,7 @@ from posenet import PoseNet, PoseNetCriterion, PoseDataset
 
 #DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/cambridge')
 DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge'
+CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
 
 
 # Basic structure taken from https://github.com/pytorch/examples/blob/master/imagenet/main.py
@@ -29,6 +30,8 @@ model_names = sorted(name for name in torchvision.models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch PoseNet Training')
 parser.add_argument('--data', '-d', metavar='DIR', default=DATA_DIR,
                     help='path to dataset')
+parser.add_argument('--cache', metavar='DIR', default=CACHE_DIR,
+                    help='path to cache dir')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='densenet161',
                     choices=model_names,
                     help='model architecture: ' +
@@ -54,6 +57,8 @@ parser.add_argument('--weight-decay', '--wd', default=0.5, type=float,
                     metavar='W', help='weight decay (default: 0)')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
+parser.add_argument('--test-freq', '--tf', default=1, type=int,
+                    metavar='N', help='test frequency (default: 1)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -74,7 +79,7 @@ def main():
     cudnn.benchmark = False  # uses extra mem if True
 
     model = PoseNet(arch=args.arch, num_features=args.features, dropout=0, pretrained=True,
-                    track_running_stats=False, cache_dir='d:\\projects\\densepose\\data\\models')
+                    track_running_stats=False, cache_dir=args.cache)
 
     # optionally resume from a checkpoint
     best_loss = float('inf')
@@ -131,18 +136,20 @@ def main():
         train(train_loader, model, criterion, optimizer, epoch, device)
 
         # evaluate on validation set
-        loss = validate(val_loader, model, criterion, device)
-        print('=====\n')
+        if (epoch+1) % args.test_freq == 0:
+            loss = validate(val_loader, model, criterion, device)
 
-        # remember best loss and save checkpoint
-        is_best = loss < best_loss
-        best_loss = min(loss, best_loss)
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': args.arch,
-            'state_dict': model.state_dict(),
-            'best_loss': loss,
-        }, is_best)
+            # remember best loss and save checkpoint
+            is_best = loss < best_loss
+            best_loss = min(loss, best_loss)
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': args.arch,
+                'state_dict': model.state_dict(),
+                'best_loss': loss,
+            }, is_best)
+
+        print('=====\n')
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, validate_only=False):
