@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4c2860a2-cf92-4dde-a7ea-37c3e6df60c0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/environment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/posenet.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/posenet.py" afterDir="false" />
     </list>
@@ -15,11 +13,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="305">
-              <caret line="188" column="28" lean-forward="true" selection-start-line="188" selection-start-column="28" selection-end-line="188" selection-end-column="28" />
+            <state relative-caret-position="188">
+              <caret line="102" lean-forward="true" selection-start-line="102" selection-end-line="102" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -27,11 +25,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/posenet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="247">
-              <caret line="136" column="37" selection-start-line="136" selection-start-column="37" selection-end-line="136" selection-end-column="37" />
+            <state relative-caret-position="-48">
+              <caret line="152" column="49" lean-forward="true" selection-start-line="152" selection-start-column="49" selection-end-line="152" selection-end-column="49" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -62,6 +60,7 @@
       <find>validate</find>
       <find>cuda</find>
       <find>best_loss</find>
+      <find>learn_beta</find>
     </findStrings>
     <replaceStrings>
       <replace>nn</replace>
@@ -73,15 +72,15 @@
         <option value="$PROJECT_DIR$/src/__init__.py" />
         <option value="$PROJECT_DIR$/src/PoseDataset.py" />
         <option value="$PROJECT_DIR$/src/dataset.py" />
-        <option value="$PROJECT_DIR$/src/main.py" />
         <option value="$PROJECT_DIR$/src/posenet.py" />
+        <option value="$PROJECT_DIR$/src/main.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="12" />
     <option name="y" value="20" />
-    <option name="width" value="3143" />
+    <option name="width" value="3460" />
     <option name="height" value="2005" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
@@ -206,11 +205,11 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="5" y="8" width="1257" height="802" extended-state="0" />
+    <frame x="5" y="8" width="1384" height="802" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.313982" />
+      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.28444445" />
       <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="0" />
       <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
@@ -315,22 +314,22 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main.py">
+    <entry file="file://$PROJECT_DIR$/src/posenet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="305">
-          <caret line="188" column="28" lean-forward="true" selection-start-line="188" selection-start-column="28" selection-end-line="188" selection-end-column="28" />
+        <state relative-caret-position="-48">
+          <caret line="152" column="49" lean-forward="true" selection-start-line="152" selection-start-column="49" selection-end-line="152" selection-end-column="49" />
           <folding>
-            <element signature="e#0#15#0" expanded="true" />
+            <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/posenet.py">
+    <entry file="file://$PROJECT_DIR$/src/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="247">
-          <caret line="136" column="37" selection-start-line="136" selection-start-column="37" selection-end-line="136" selection-end-column="37" />
+        <state relative-caret-position="188">
+          <caret line="102" lean-forward="true" selection-start-line="102" selection-end-line="102" />
           <folding>
-            <element signature="e#0#9#0" expanded="true" />
+            <element signature="e#0#15#0" expanded="true" />
           </folding>
         </state>
       </provider>

@@ -103,17 +103,19 @@ class PoseNet(nn.Module):
 
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, stereo=False, beta=512.0, learn_beta=False, sx=0.0, sq=-3.0):
+    def __init__(self, stereo=False, beta=512.0, learn_uncertainties=False, sx=0.0, sq=-3.0):
         super(PoseNetCriterion, self).__init__()
         self.stereo = stereo
         self.loss_fn = nn.L1Loss()
-        self.learn_beta = learn_beta
-        if not learn_beta:
-            self.beta = beta
-        else:
+        self.learn_uncertainties = learn_uncertainties
+        if learn_uncertainties:
+            self.sx = nn.Parameter(torch.Tensor([sx]), requires_grad=learn_uncertainties)
+            self.sq = nn.Parameter(torch.Tensor([sq]), requires_grad=learn_uncertainties)
             self.beta = 1.0
-        self.sx = nn.Parameter(torch.Tensor([sx]), requires_grad=learn_beta)
-        self.sq = nn.Parameter(torch.Tensor([sq]), requires_grad=learn_beta)
+        else:
+            self.sx = 0.0
+            self.sq = 0.0
+            self.beta = beta
 
     def forward(self, x, y):
         """
@@ -134,7 +136,7 @@ class PoseNetCriterion(nn.Module):
             loss = loss / 2
         else:
             # Translation loss
-            loss += torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3])
+            loss += torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx
             # Rotation loss
             loss += torch.exp(-self.sq) * self.beta * self.loss_fn(x[:, 3:], y[:, 3:]) + self.sq
         #         print('x = \n{}'.format(x[0]))

@@ -97,7 +97,7 @@ def main():
 
     # Data loading code
     train_loader = DataLoader(
-        PoseDataset(args.data, 'dataset_train.txt', random_crop=True),
+        PoseDataset(args.data, 'dataset_train.txt', random_crop=False),
         batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True)
 
@@ -107,7 +107,7 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     # define loss function (criterion) and pptimizer
-    criterion = PoseNetCriterion(stereo=False, learn_beta=True, sx=0.0, sq=-3.0)
+    criterion = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
 
     # evaluate model only
     if args.evaluate:
