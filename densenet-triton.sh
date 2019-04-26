@@ -15,5 +15,5 @@ cd $WRKDIR/densepose/src
 module load anaconda3
 source activate $WRKDIR/conda/envs/densepose
 srun python3 main.py -d /tmp/$SLURM_JOB_ID/cambridge/StMarysChurch --cache $WRKDIR/data/models \
-                     --pid $SLURM_JOB_ID -a googlenet -b 64 -j 4 --tf 3 --epochs 500 \
-		     -o adam --lr 1e-5 --wd 0.1 --do 0.5
+                     --pid $SLURM_JOB_ID -a densenet121 -b 64 -j 4 --tf 3 --epochs 500 \
+                     -o adam --lr 1e-5 --wd 0.1 --do 0.5

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=0-03:59:00		# estimated excution time (~80s/epoch)
+#SBATCH --time=0-00:30:00		# estimated excution time (~80s/epoch)
 #SBATCH --mem=12G     			# memory needed (~2Gb/core)
 #SBATCH --gres=gpu:1			# GPUs needed
 #SBATCH -c 4				# CPUs needed (~9 per one gpu)
@@ -15,5 +15,4 @@ cd $WRKDIR/densepose/src
 module load anaconda3
 source activate $WRKDIR/conda/envs/densepose
 srun python3 main.py -d /tmp/$SLURM_JOB_ID/cambridge/StMarysChurch --cache $WRKDIR/data/models \
-                     --pid $SLURM_JOB_ID -a googlenet -b 64 -j 4 --tf 3 --epochs 500 \
-		     -o adam --lr 1e-5 --wd 0.1 --do 0.5
+                     -a googlenet -o adam --lr 1e-5 --wd 0.1 --do 0.5 -b 64 --epochs 50 -j 4 --tf 3
