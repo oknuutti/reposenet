@@ -28,33 +28,38 @@ class PoseNet(nn.Module):
         assert arch in models.__dict__, 'invalid model name: %s' % arch
 
         if arch.startswith('alexnet'):
-            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)  # 61M params
             repl_layers = ('classifier',)
 
         elif arch.startswith('vgg'):
-            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)  # 11&13: 133M, 16: 138M, 19: 144M
             repl_layers = ('classifier',)
 
         elif arch.startswith('resnet'):
-            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)  # 18: 12M, 34: 22M, 50: 26M, 101: 45M, 152: 60M
             repl_layers = ('fc',)
 
         elif arch.startswith('squeezenet'):
-            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)  # 1_0 & 1_1: 1.2M
+            repl_layers = ('classifier',)
+
+        elif arch.startswith('mobilenet'):
+            assert not pretrained, 'pretrained model not available'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)  # v2: 3.5M
             repl_layers = ('classifier',)
 
         elif arch.startswith('densenet'):
-            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)  # 121: 8M, 169: 14M, 201: 20M, 161: 29M
             repl_layers = ('classifier',)
 
         elif arch.startswith('inception'):
             self.feature_extractor = getattr(models, arch)(pretrained=pretrained, aux_logits=True,
-                                                           transform_input=False)
+                                                           transform_input=False)  # v3: 27M params
             repl_layers = ('fc', 'AuxLogits.fc')
 
         elif arch.startswith('googlenet'):
             self.feature_extractor = getattr(models, arch)(pretrained=pretrained, aux_logits=True,
-                                                           transform_input=False)
+                                                           transform_input=False)  # 13M params
             repl_layers = ('fc', 'aux1.fc2', 'aux2.fc2')
 
         else:

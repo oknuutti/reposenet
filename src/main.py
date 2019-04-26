@@ -2,6 +2,7 @@ import argparse
 import shutil
 import os
 import time
+import csv
 
 import numpy as np
 import quaternion
@@ -17,7 +18,7 @@ from posenet import PoseNet, PoseNetCriterion, PoseDataset
 
 
 #DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/cambridge')
-DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\KingsCollege'
+DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\StMarysChurch'
 CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
 
 
@@ -67,6 +68,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default=True, action='store_true',
                     help='use pre-trained model')
+parser.add_argument('--pid', default=0, type=int, metavar='PID',
+                    help='experiment id for out file names')
 
 
 def main():
@@ -132,27 +135,31 @@ def main():
     #criterion.to(device)
 
     # training loop
+    stats = np.zeros((args.epochs, 11))
     for epoch in range(args.start_epoch, args.epochs):
         # adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, optimizer, epoch, device)
+        lss, pos, ori = train(train_loader, model, optimizer, epoch, device)
+        stats[epoch, :6] = [epoch, lss.avg, pos.avg, pos.median, ori.avg, ori.median]
 
         # evaluate on validation set
         if (epoch+1) % args.test_freq == 0:
-            loss = validate(val_loader, model, device)
+            lss, pos, ori = validate(val_loader, model, device)
+            stats[epoch, 6:] = [lss.avg, pos.avg, pos.median, ori.avg, ori.median]
 
             # remember best loss and save checkpoint
-            is_best = loss < best_loss
-            best_loss = min(loss, best_loss)
+            is_best = ori.median < best_loss
+            best_loss = min(ori.median, best_loss)
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
-                'best_loss': loss,
+                'best_loss': lss.avg,
             }, is_best)
 
         print('=====\n')
+    save_log(stats)
 
 
 def train(train_loader, model, optimizer, epoch, device, validate_only=False):
@@ -217,7 +224,7 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
                    data_time=data_time, loss=losses, pos=positions, orient=orientations,
                    cost_sx=float(model.cost_fn.sx.data), cost_sq=float(model.cost_fn.sq.data)))
 
-    return losses.avg
+    return losses, positions, orientations
 
 
 def validate(val_loader, model, device):
@@ -244,11 +251,21 @@ def angle_between_q(q1r, q2r):
     err_rad = 2*np.arccos([q.normalized().w for q in qd])
     return np.abs((np.degrees(err_rad) + 180) % 360 - 180)
 
+def filename_pid(filename):
+    ext = max(filename.find('.'), 0)
+    return (filename[:-ext] + '_' + args.pid + filename[-ext:]) if args.pid > 0 else filename
+
+def save_log(stats, filename='stats.pth'):
+    with open(filename_pid(filename), 'w', newline='') as fh:
+        w = csv.writer(fh, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
+        for row in stats:
+            w.writerow(row)
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename)
+    torch.save(state, filename_pid(filename))
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename_pid(filename), filename_pid('model_best.pth.tar'))
 
 
 def adjust_learning_rate(optimizer, epoch):
