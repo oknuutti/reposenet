@@ -68,8 +68,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default=True, action='store_true',
                     help='use pre-trained model')
-parser.add_argument('--pid', default=0, type=int, metavar='PID',
-                    help='experiment id for out file names')
+parser.add_argument('--pid', default='', type=str, metavar='PID',
+                    help='experiment id/name for out file names')
 
 
 def main():
@@ -251,9 +251,11 @@ def angle_between_q(q1r, q2r):
     err_rad = 2*np.arccos([q.normalized().w for q in qd])
     return np.abs((np.degrees(err_rad) + 180) % 360 - 180)
 
+
 def filename_pid(filename):
-    ext = max(filename.find('.'), 0)
-    return (filename[:-ext] + '_' + args.pid + filename[-ext:]) if args.pid > 0 else filename
+    ext = len(filename) - max(filename.find('.'), 0)
+    return (filename[:-ext] + '_' + args.pid + filename[-ext:]) if len(args.pid) > 0 else filename
+
 
 def save_log(stats, filename='stats.csv'):
     with open(filename_pid(filename), 'w', newline='') as fh:
@@ -261,6 +263,7 @@ def save_log(stats, filename='stats.csv'):
         w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
         for row in stats:
             w.writerow(row)
+
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename_pid(filename))
