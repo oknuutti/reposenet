@@ -255,7 +255,7 @@ def filename_pid(filename):
     ext = max(filename.find('.'), 0)
     return (filename[:-ext] + '_' + args.pid + filename[-ext:]) if args.pid > 0 else filename
 
-def save_log(stats, filename='stats.pth'):
+def save_log(stats, filename='stats.csv'):
     with open(filename_pid(filename), 'w', newline='') as fh:
         w = csv.writer(fh, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
