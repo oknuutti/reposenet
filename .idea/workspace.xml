@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4c2860a2-cf92-4dde-a7ea-37c3e6df60c0" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/posenet.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/posenet.py" afterDir="false" />
     </list>
@@ -13,11 +14,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="238">
-              <caret line="221" lean-forward="true" selection-start-line="221" selection-end-line="221" />
+            <state relative-caret-position="2487">
+              <caret line="188" selection-start-line="188" selection-end-line="188" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -28,11 +29,20 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/posenet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="173">
-              <caret line="119" column="54" selection-start-line="119" selection-start-column="54" selection-end-line="119" selection-end-column="54" />
+            <state relative-caret-position="193">
+              <caret line="120" lean-forward="true" selection-start-line="120" selection-end-line="120" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/models/googlenet.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-2259">
+              <caret line="14" column="16" selection-start-line="14" selection-end-line="14" selection-end-column="16" />
             </state>
           </provider>
         </entry>
@@ -60,11 +70,20 @@
       <find>validate</find>
       <find>cuda</find>
       <find>best_loss</find>
-      <find>random</find>
       <find>learn_beta</find>
+      <find>fc_xyz</find>
+      <find>tensor</find>
+      <find>Tensor</find>
+      <find>cat</find>
+      <find>torch.cat</find>
+      <find>random</find>
+      <find>position_scale</find>
+      <find>dropout</find>
+      <find>aux_qty</find>
     </findStrings>
     <replaceStrings>
       <replace>nn</replace>
+      <replace>fc_vect</replace>
     </replaceStrings>
   </component>
   <component name="IdeDocumentHistory">
@@ -73,8 +92,8 @@
         <option value="$PROJECT_DIR$/src/__init__.py" />
         <option value="$PROJECT_DIR$/src/PoseDataset.py" />
         <option value="$PROJECT_DIR$/src/dataset.py" />
-        <option value="$PROJECT_DIR$/src/posenet.py" />
         <option value="$PROJECT_DIR$/src/main.py" />
+        <option value="$PROJECT_DIR$/src/posenet.py" />
       </list>
     </option>
   </component>
@@ -82,7 +101,7 @@
     <option name="x" value="12" />
     <option name="y" value="20" />
     <option name="width" value="3460" />
-    <option name="height" value="2005" />
+    <option name="height" value="2075" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -126,7 +145,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.main googlenet adam">
+  <component name="RunManager" selected="Python.main densenet121 adam">
     <configuration name="main densenet121 adam" type="PythonConfigurationType" factoryName="Python">
       <module name="densepose" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -149,7 +168,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a densenet121 -o adam --lr 1e-4 --wd 0.5 -b 22 --epochs 1" />
+      <option name="PARAMETERS" value="-a densenet121 -o adam --lr 1e-5 --wd 0.0005 --do 0.5 -b 22 --epochs 12 --tf 3" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -179,7 +198,37 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-4 --wd 0.0 -b 60 --epochs 3 --tf 3" />
+      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-5 --wd 0.0005 --do 0.5 -b 60 --epochs 12 --tf 3" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main resnet18 adam" type="PythonConfigurationType" factoryName="Python">
+      <module name="densepose" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="net.ashald.envfile">
+        <option name="IS_ENABLED" value="false" />
+        <option name="IS_SUBST" value="false" />
+        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+        <option name="IS_IGNORE_MISSING_FILES" value="false" />
+        <ENTRIES>
+          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        </ENTRIES>
+      </EXTENSION>
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
+      <option name="PARAMETERS" value="-a resnet18 -o adam --lr 1e-5 --wd 0.0005 --do 0.5 -b 120 --epochs 12 --tf 3" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -190,6 +239,7 @@
     <list>
       <item itemvalue="Python.main densenet121 adam" />
       <item itemvalue="Python.main googlenet adam" />
+      <item itemvalue="Python.main resnet18 adam" />
     </list>
   </component>
   <component name="SvnConfiguration">
@@ -206,7 +256,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="5" y="8" width="1384" height="802" extended-state="0" />
+    <frame x="5" y="8" width="1384" height="830" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
@@ -218,8 +268,8 @@
       <window_info anchor="bottom" id="Message" order="3" />
       <window_info anchor="bottom" id="Find" order="4" />
       <window_info anchor="bottom" id="Version Control" order="5" />
-      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.3164933" />
-      <window_info anchor="bottom" id="Debug" order="7" weight="0.47399703" />
+      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.35235378" />
+      <window_info anchor="bottom" id="Debug" order="7" weight="0.43509272" />
       <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="9" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="10" />
@@ -301,10 +351,17 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/nn/modules/module.py">
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/__init__.pyi">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="135">
-          <caret line="488" selection-start-line="488" selection-end-line="488" />
+        <state relative-caret-position="133">
+          <caret line="895" column="128" selection-start-line="895" selection-start-column="128" selection-end-line="895" selection-end-column="128" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/numpy/core/fromnumeric.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="117">
+          <caret line="85" selection-start-line="85" selection-end-line="85" />
         </state>
       </provider>
     </entry>
@@ -315,23 +372,44 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/functional.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="117">
+          <caret line="728" selection-start-line="728" selection-end-line="728" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/nn/modules/module.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="194">
+          <caret line="488" selection-start-line="488" selection-end-line="488" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2487">
+          <caret line="188" selection-start-line="188" selection-end-line="188" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/posenet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="173">
-          <caret line="119" column="54" selection-start-line="119" selection-start-column="54" selection-end-line="119" selection-end-column="54" />
+        <state relative-caret-position="193">
+          <caret line="120" lean-forward="true" selection-start-line="120" selection-end-line="120" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main.py">
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/models/googlenet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="238">
-          <caret line="221" lean-forward="true" selection-start-line="221" selection-end-line="221" />
-          <folding>
-            <element signature="e#0#15#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="-2259">
+          <caret line="14" column="16" selection-start-line="14" selection-end-line="14" selection-end-column="16" />
         </state>
       </provider>
     </entry>

@@ -21,38 +21,67 @@ class PoseNet(nn.Module):
         self.track_running_stats = track_running_stats
         self.pretrained = pretrained
         self.features = num_features
+        self.register_buffer('position_scale', torch.Tensor([1, 1, 1]))
 
         if cache_dir is not None:
             os.environ['TORCH_MODEL_ZOO'] = cache_dir
         assert arch in models.__dict__, 'invalid model name: %s' % arch
-        self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
 
         if arch.startswith('alexnet'):
-            final_layer = 'classifier'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            repl_layers = ('classifier',)
+
         elif arch.startswith('vgg'):
-            final_layer = 'classifier'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            repl_layers = ('classifier',)
+
         elif arch.startswith('resnet'):
-            final_layer = 'fc'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            repl_layers = ('fc',)
+
         elif arch.startswith('squeezenet'):
-            final_layer = 'classifier'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            repl_layers = ('classifier',)
+
         elif arch.startswith('densenet'):
-            final_layer = 'classifier'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained)
+            repl_layers = ('classifier',)
+
         elif arch.startswith('inception'):
-            final_layer = 'fc'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained, aux_logits=True,
+                                                           transform_input=False)
+            repl_layers = ('fc', 'AuxLogits.fc')
+
         elif arch.startswith('googlenet'):
-            final_layer = 'fc'
+            self.feature_extractor = getattr(models, arch)(pretrained=pretrained, aux_logits=True,
+                                                           transform_input=False)
+            repl_layers = ('fc', 'aux1.fc2', 'aux2.fc2')
+
         else:
             assert False, 'model %s not supported' % arch
 
-        cls_in_features = getattr(self.feature_extractor, final_layer).in_features
-        setattr(self.feature_extractor, final_layer, Identity())
-        self.fc_feat = nn.Linear(cls_in_features, num_features)
+        # replace all logit layers with identity layers, add corresponding regression layers to self
+        extra_init = []
+        self.aux_qty = 0
+        for i, repl_layer in enumerate(repl_layers):
+            np = self.feature_extractor
+            for c in repl_layer.split('.'):
+                p = np
+                np = getattr(p, c)
+            setattr(p, c, Identity())
+            if i == 0:
+                self.fc_feat = nn.Linear(np.in_features, num_features)
+            else:
+                setattr(self, 'aux_v'+str(i), nn.Linear(np.in_features, 3))
+                setattr(self, 'aux_q'+str(i), nn.Linear(np.in_features, 4))
+                self.aux_qty = i
+                extra_init.append(p)    # auxiliary heads are not pretrained
 
-        # Should use AdaptiveAvgPool2d between fc_feat and fc_xyz/fc_quat? Where in the article / which article says so?
+        # Should use AdaptiveAvgPool2d between fc_feat and fc_vect/fc_quat? Where in the article / which article says so?
         # self.feature_extractor.avgpool = nn.AdaptiveAvgPool2d(1)
 
         # Translation
-        self.fc_xyz = nn.Linear(num_features, 3)
+        self.fc_vect = nn.Linear(num_features, 3)
 
         # Rotation in quaternions
         self.fc_quat = nn.Linear(num_features, 4)
@@ -63,11 +92,10 @@ class PoseNet(nn.Module):
             if isinstance(m, nn.BatchNorm2d):
                 m.track_running_stats = self.track_running_stats
 
-        # Initialization
-        if self.pretrained:
-            init_modules = [self.fc_feat, self.fc_xyz, self.fc_quat]
-        else:
-            init_modules = self.modules()
+        # Initialization (feature_extractor already initialized in its __init__ method)
+        init_modules = [self.fc_feat, self.fc_vect, self.fc_quat] \
+                       + [getattr(self, 'aux_v' + str(i)) for i in range(1, self.aux_qty + 1)] \
+                       + [getattr(self, 'aux_q' + str(i)) for i in range(1, self.aux_qty + 1)]
 
         for m in init_modules:
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
@@ -76,32 +104,40 @@ class PoseNet(nn.Module):
                     nn.init.constant_(m.bias.data, 0)
 
         # Cost function has trainable parameters so included here
-        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
+        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-6.24)
+
+    def set_target_scale(self, targets):
+        tmp = torch.Tensor(np.array([t.data[:3].numpy() for t in targets]))
+        self.position_scale.data = torch.std(tmp[:, :3], dim=0)
 
     def extract_features(self, x):
         x_features = self.feature_extractor(x)
+        x_features, *auxs = x_features if isinstance(x_features, tuple) else (x_features, )
         x_features = self.fc_feat(x_features)
         x_features = F.relu(x_features)
         if self.dropout > 0:
             x_features = F.dropout(x_features, p=self.dropout, training=self.training)
-        return x_features
+        return [x_features] + list(auxs)
 
     def forward(self, x):
         # x is batch_images [batch_size x image, batch_size x image]
 
-        #         x = self.feature_extractor(x)
-
-        # if type(x) is list:
-        #     x_features = [self.extract_features(xi) for xi in x]
-        #     x_translations = [self.fc_xyz(xi) for xi in x_features]
-        #     x_rotations = [self.fc_quat(xi) for xi in x_features]
-        #     x_poses = [torch.cat((xt, xr), dim=1) for xt, xr in zip(x_translations, x_rotations)]
-        # elif torch.is_tensor(x):
-        x_features = self.extract_features(x)
-        x_translations = self.fc_xyz(x_features)
+        x_features, *auxs = self.extract_features(x)
+        x_translations = self.fc_vect(x_features)
+        x_translations = self.position_scale.unsqueeze(0) * x_translations
         x_rotations = self.fc_quat(x_features)
         x_rotations = F.normalize(x_rotations, p=2, dim=1)
         x_poses = torch.cat((x_translations, x_rotations), dim=1)
+
+        if self.training and len(auxs) > 0:
+            aux_output = []
+            for i, aux in enumerate(auxs):
+                av = getattr(self, 'aux_v' + str(i + 1))(aux)
+                av = self.position_scale.unsqueeze(0) * av
+                aq = getattr(self, 'aux_q' + str(i + 1))(aux)
+                aq = F.normalize(aq, p=2, dim=1)
+                aux_output.append(torch.cat((av, aq), dim=1))
+            return [x_poses] + aux_output
 
         return x_poses
 
@@ -110,7 +146,7 @@ class PoseNet(nn.Module):
 
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, stereo=False, beta=500.0, learn_uncertainties=False, sx=0.0, sq=-3.0):
+    def __init__(self, stereo=False, beta=500.0, learn_uncertainties=False, sx=0.0, sq=-3):
         super(PoseNetCriterion, self).__init__()
         self.stereo = stereo
         self.loss_fn = nn.L1Loss()
@@ -124,30 +160,34 @@ class PoseNetCriterion(nn.Module):
             self.sq = 0.0
             self.beta = beta
 
-    def forward(self, x, y):
+    def forward(self, all_x, y):
         """
         Args:
             x: list(N x 7, N x 7) - prediction (xyz, quat)
             y: list(N x 7, N x 7) - target (xyz, quat)
         """
 
+        if not isinstance(all_x, (list, tuple)):
+            all_x = (all_x,)
+
         loss = 0
-        if self.stereo:
-            for i in range(2):
+        for x in all_x:
+            if self.stereo:
+                for i in range(2):
+                    # Translation loss
+                    loss += torch.exp(-self.sx) * self.loss_fn(x[i][:, :3], y[i][:, :3]) + self.sx
+                    # Rotation loss
+                    loss += torch.exp(-self.sq) * self.beta * self.loss_fn(x[i][:, 3:], y[i][:, 3:]) + self.sq
+
+                # Normalize per image so we can compare stereo vs no-stereo mode
+                loss = loss / 2
+            else:
                 # Translation loss
-                loss += torch.exp(-self.sx) * self.loss_fn(x[i][:, :3], y[i][:, :3]) + self.sx
+                loss += torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx
+
                 # Rotation loss
-                loss += torch.exp(-self.sq) * self.beta * self.loss_fn(x[i][:, 3:], y[i][:, 3:]) + self.sq
-
-            # Normalize per image so we can compare stereo vs no-stereo mode
-            loss = loss / 2
-        else:
-            # Translation loss
-            loss += torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx
-
-            # Rotation loss
-            xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
-            loss += torch.exp(-self.sq) * self.beta * self.loss_fn(xq, y[:, 3:]) + self.sq
+                xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
+                loss += torch.exp(-self.sq) * self.beta * self.loss_fn(xq, y[:, 3:]) + self.sq
         return loss
 
 

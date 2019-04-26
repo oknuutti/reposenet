@@ -53,8 +53,10 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                      help='momentum (for SGD optimizer only)')
 parser.add_argument('--optimizer', '-o', default='adam', type=str, metavar='OPT',
                      help='optimizer [adam|sgd]', choices=('sgd', 'adam'))
-parser.add_argument('--weight-decay', '--wd', default=0.5, type=float,
+parser.add_argument('--weight-decay', '--wd', default=0.0005, type=float,
                     metavar='W', help='weight decay (default: 0)')
+parser.add_argument('--dropout', '--do', default=0, type=float,
+                    metavar='R', help='dropout ratio (default: 0)')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--test-freq', '--tf', default=1, type=int,
@@ -78,7 +80,7 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     cudnn.benchmark = False  # uses extra mem if True
 
-    model = PoseNet(arch=args.arch, num_features=args.features, dropout=0, pretrained=True,
+    model = PoseNet(arch=args.arch, num_features=args.features, dropout=args.dropout, pretrained=True,
                     track_running_stats=False, cache_dir=args.cache)
 
     # optionally resume from a checkpoint
@@ -96,8 +98,9 @@ def main():
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     # Data loading code
-    train_loader = DataLoader(
-        PoseDataset(args.data, 'dataset_train.txt', random_crop=False),
+    data = PoseDataset(args.data, 'dataset_train.txt', random_crop=True)
+    model.set_target_scale(data.targets)
+    train_loader = DataLoader(data,
         batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True)
 
@@ -181,6 +184,8 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
         # compute output
         output = model(input_var)
         loss = model.cost(output, target_var)
+        if isinstance(output, (list, tuple)):
+            output = output[0]
 
         # compute gradient and optimize params
         if not validate_only:
