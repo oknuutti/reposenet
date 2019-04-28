@@ -192,7 +192,8 @@ class PoseNetCriterion(nn.Module):
 
                 # Rotation loss
                 xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
-                loss += torch.exp(-self.sq) * self.beta * self.loss_fn(xq, y[:, 3:]) + self.sq
+                yq = torch.sign(y[:, 3]).unsqueeze(1) * y[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
+                loss += torch.exp(-self.sq) * self.beta * self.loss_fn(xq, yq) + self.sq
         return loss
 
 
@@ -224,7 +225,7 @@ class PoseDataset(ImageFolder):
                         row = line.strip('\r\n').split(' ')
                         if len(row) == 8:
                             pose = np.array(list(map(float, row[1:]))).astype('f4')
-                            pose[3:] *= np.sign(pose[3])/np.linalg.norm(pose[3:])  # normalize quaternion
+                            # pose[3:] *= np.sign(pose[3])/np.linalg.norm(pose[3:])  # normalize quaternion
                             if np.linalg.norm(pose) < 1000:
                                 samples.append((
                                     os.path.join(self.root, scene_dir, row[0]),
