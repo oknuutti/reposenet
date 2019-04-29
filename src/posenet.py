@@ -21,7 +21,8 @@ class PoseNet(nn.Module):
         self.track_running_stats = track_running_stats
         self.pretrained = pretrained
         self.features = num_features
-        self.register_buffer('position_scale', torch.Tensor([1, 1, 1]))
+        self.register_buffer('target_mean', torch.zeros(7))
+        self.register_buffer('target_std', torch.ones(7))
 
         if cache_dir is not None:
             os.environ['TORCH_MODEL_ZOO'] = cache_dir
@@ -111,9 +112,9 @@ class PoseNet(nn.Module):
         # Cost function has trainable parameters so included here
         self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-6.24)
 
-    def set_target_scale(self, targets):
-        tmp = torch.Tensor(np.array([t.data[:3].numpy() for t in targets]))
-        self.position_scale.data = torch.std(tmp[:, :3], dim=0)
+    def set_target_transform(self, mean, std):
+        self.target_mean.data = mean.clone()
+        self.target_std.data = std.clone()
 
     def extract_features(self, x):
         x_features = self.feature_extractor(x)
@@ -129,22 +130,26 @@ class PoseNet(nn.Module):
 
         x_features, *auxs = self.extract_features(x)
         x_translations = self.fc_vect(x_features)
-        x_translations = self.position_scale.unsqueeze(0) * x_translations
         x_rotations = self.fc_quat(x_features)
-        x_rotations = F.normalize(x_rotations, p=2, dim=1)
-        x_poses = torch.cat((x_translations, x_rotations), dim=1)
+        x_poses = self.fix_poses(x_translations, x_rotations)
 
         if self.training and len(auxs) > 0:
             aux_output = []
             for i, aux in enumerate(auxs):
                 av = getattr(self, 'aux_v' + str(i + 1))(aux)
-                av = self.position_scale.unsqueeze(0) * av
                 aq = getattr(self, 'aux_q' + str(i + 1))(aux)
-                aq = F.normalize(aq, p=2, dim=1)
-                aux_output.append(torch.cat((av, aq), dim=1))
+                ap = self.fix_poses(av, aq)
+                aux_output.append(ap)
             return [x_poses] + aux_output
 
         return x_poses
+
+    def fix_poses(self, translations, rotations):
+        translations = translations * self.target_std[:3] + self.target_mean[:3]
+        rotations = rotations * self.target_std[3:] + self.target_mean[3:]
+        rotations = F.normalize(rotations, p=2, dim=1)
+        poses = torch.cat((translations, rotations), dim=1)
+        return poses
 
     def cost(self, x, y):
         return self.cost_fn(x, y)
@@ -197,8 +202,23 @@ class PoseNetCriterion(nn.Module):
         return loss
 
 
+class TargetNormalizer():
+    def __init__(self, mean, std):
+        self.mean = torch.Tensor(mean)
+        self.std = torch.Tensor(std)
+
+    def __call__(self, x):
+        return (x-self.mean)/self.std
+
+    def inverse(self, x):
+        return x*self.std + self.mean
+
+    def __str__(self):
+        return 'mean: %s\nstd: %s'%(self.mean.data.detach().cpu().numpy(), self.std.data.detach().cpu().numpy())
+
+
 class PoseDataset(ImageFolder):
-    def __init__(self, root, label_file, random_crop=False, loader=default_loader):
+    def __init__(self, root, label_file, random_crop=False, target_transform=None, loader=default_loader):
         self.root = root
         self.label_file = label_file
         self.transform = transforms.Compose([
@@ -208,14 +228,16 @@ class PoseDataset(ImageFolder):
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
         ])
-        self.target_transform = None
+        self.target_transform = target_transform
         self.loader = loader
         self.extensions = IMG_EXTENSIONS
-        self.imgs = self.samples = self.load_samples()
+        self.imgs = self.samples = self._load_samples()
         self.targets = [s[1] for s in self.samples]
 
-    def load_samples(self):
+    def _load_samples(self):
         samples = []
+        paths = []
+        poses = []
         label_file = os.path.join(self.root, self.label_file)
         for scene_dir in ([''] if os.path.exists(label_file) else os.listdir(self.root)):
             label_file = os.path.join(self.root, scene_dir, self.label_file)
@@ -227,12 +249,14 @@ class PoseDataset(ImageFolder):
                             pose = np.array(list(map(float, row[1:]))).astype('f4')
                             # pose[3:] *= np.sign(pose[3])/np.linalg.norm(pose[3:])  # normalize quaternion
                             if np.linalg.norm(pose) < 1000:
-                                samples.append((
-                                    os.path.join(self.root, scene_dir, row[0]),
-                                    torch.tensor(pose)))
+                                paths.append(os.path.join(self.root, scene_dir, row[0]))
+                                poses.append(pose)
                             else:
                                 print('inexpected meta data at %s: %s' % (scene_dir, row,))
 
+        samples = [(paths[i], torch.tensor(pose)) for i, pose in enumerate(poses)]
+        if self.target_transform is None:
+            self.target_transform = TargetNormalizer(np.mean(poses, axis=0), np.std(poses, axis=0))
         return samples
 
 

@@ -101,19 +101,18 @@ def main():
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     # Data loading code
-    data = PoseDataset(args.data, 'dataset_train.txt', random_crop=True)
-    model.set_target_scale(data.targets)
-    train_loader = DataLoader(data,
+    trdata = PoseDataset(args.data, 'dataset_train.txt', random_crop=True)
+    train_loader = DataLoader(trdata,
         batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True)
 
     val_loader = DataLoader(
-        PoseDataset(args.data, 'dataset_test.txt', random_crop=False),
+        PoseDataset(args.data, 'dataset_test.txt', random_crop=False, target_transform=trdata.target_transform),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    # # define loss function (criterion) and pptimizer
-    # criterion = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
+    model.set_target_transform(trdata.target_transform.mean, trdata.target_transform.std)
+    model.to(device)
 
     # evaluate model only
     if args.evaluate:
@@ -130,9 +129,6 @@ def main():
                                      weight_decay=args.weight_decay)
     else:
         assert False, 'Invalid optimizer: %s' % args.optimizer
-
-    model.to(device)
-    #criterion.to(device)
 
     # training loop
     stats = np.zeros((args.epochs, 11))
