@@ -99,13 +99,14 @@ class PoseNet(nn.Module):
                 m.track_running_stats = self.track_running_stats
 
         # Initialization (feature_extractor already initialized in its __init__ method)
-        init_modules = [self.fc_feat, self.fc_vect, self.fc_quat] \
-                       + [getattr(self, 'aux_v' + str(i)) for i in range(1, self.aux_qty + 1)] \
-                       + [getattr(self, 'aux_q' + str(i)) for i in range(1, self.aux_qty + 1)]
+        init_modules = [(self.fc_feat, 0.01), (self.fc_vect, 0.5), (self.fc_quat, 0.01)] \
+                       + [(getattr(self, 'aux_v' + str(i)), 0.5) for i in range(1, self.aux_qty + 1)] \
+                       + [(getattr(self, 'aux_q' + str(i)), 0.01) for i in range(1, self.aux_qty + 1)]
 
-        for m in init_modules:
+        for (m, std) in init_modules:
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data)
+                #nn.init.kaiming_normal_(m.weight.data)
+                nn.init.normal_(m.weight.data, 0, std)
                 if m.bias is not None:
                     nn.init.constant_(m.bias.data, 0)
 
@@ -167,10 +168,12 @@ class PoseNet(nn.Module):
 
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, stereo=False, beta=500.0, learn_uncertainties=False, sx=0.0, sq=-3):
+    def __init__(self, stereo=False, beta=500.0, aux_cost_coef=0.3,
+                 learn_uncertainties=False, sx=0.0, sq=-3):
         super(PoseNetCriterion, self).__init__()
         self.stereo = stereo
         self.loss_fn = nn.L1Loss()
+        self.aux_cost_coef = aux_cost_coef
         self.learn_uncertainties = learn_uncertainties
         if learn_uncertainties:
             self.sx = nn.Parameter(torch.Tensor([sx]))
@@ -192,24 +195,26 @@ class PoseNetCriterion(nn.Module):
             all_x = (all_x,)
 
         loss = 0
-        for x in all_x:
+        for i, x in enumerate(all_x):
+            coef = 1 if i == 0 else self.aux_cost_coef
             if self.stereo:
                 for i in range(2):
                     # Translation loss
-                    loss += torch.exp(-self.sx) * self.loss_fn(x[i][:, :3], y[i][:, :3]) + self.sx
+                    loss += coef * (torch.exp(-self.sx) * self.loss_fn(x[i][:, :3], y[i][:, :3]) + self.sx)
                     # Rotation loss
-                    loss += torch.exp(-self.sq) * self.beta * self.loss_fn(x[i][:, 3:], y[i][:, 3:]) + self.sq
+                    loss += coef * (torch.exp(-self.sq) * self.beta * self.loss_fn(x[i][:, 3:], y[i][:, 3:]) + self.sq)
 
                 # Normalize per image so we can compare stereo vs no-stereo mode
                 loss = loss / 2
             else:
                 # Translation loss
-                loss += torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx
+                loss += coef * (torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx)
 
                 # Rotation loss
                 xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
                 yq = torch.sign(y[:, 3]).unsqueeze(1) * y[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
-                loss += torch.exp(-self.sq) * self.beta * self.loss_fn(xq, yq) + self.sq
+                loss += coef * (torch.exp(-self.sq) * self.beta * self.loss_fn(xq, yq) + self.sq)
+
         return loss
 
 

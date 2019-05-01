@@ -119,14 +119,29 @@ def main():
         validate(val_loader, model)
         return
 
+    bias_params = []
+    weight_params = []
+    other_params = []
+    for name, param in model.named_parameters():
+        if 'bias' in name:
+            bias_params.append(param)
+        elif 'weight' in name:
+            weight_params.append(param)
+        else:
+            other_params.append(param)
+
     # initialize optimizer
     if args.optimizer == 'sgd':
-        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+        raise NotImplementedError('SGD not implemented')
+        optimizer = torch.optim.SGD(bias_params, lr=args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
     elif args.optimizer == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(), args.lr,
-                                     weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam([
+            {'params': bias_params, 'lr': args.lr * 2, 'weight_decay': args.weight_decay * 0},
+            {'params': weight_params, 'lr': args.lr * 1, 'weight_decay': args.weight_decay * 1},
+            {'params': other_params, 'lr': args.lr * 10, 'weight_decay': args.weight_decay * 0},
+        ])
     else:
         assert False, 'Invalid optimizer: %s' % args.optimizer
 
