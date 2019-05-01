@@ -107,11 +107,11 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     val_loader = DataLoader(
-        PoseDataset(args.data, 'dataset_test.txt', random_crop=False, target_transform=trdata.target_transform),
+        PoseDataset(args.data, 'dataset_test.txt', random_crop=False),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    model.set_target_transform(trdata.target_transform.mean, trdata.target_transform.std)
+    model.set_target_transform(trdata.target_mean, trdata.target_std)
     model.to(device)
 
     # evaluate model only
@@ -197,7 +197,8 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
             optimizer.step()
 
         # measure accuracy and record loss
-        pos, orient = accuracy(output.data, target)
+        with torch.no_grad():
+            pos, orient = accuracy(output, target)
         positions.update(pos)
         orientations.update(orient)
         losses.update(loss.data)

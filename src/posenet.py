@@ -14,7 +14,7 @@ from torchvision.datasets.folder import ImageFolder, default_loader, IMG_EXTENSI
 class PoseNet(nn.Module):
     """ Based on https://github.com/bexcite/apolloscape-loc/models/posenet.py by Pavlo Bashmakov """
 
-    def __init__(self, arch, num_features=2048, dropout=0.5, cache_dir=None,
+    def __init__(self, arch, num_features=2048, dropout=0.0, cache_dir=None,
                  track_running_stats=False, pretrained=False):
         super(PoseNet, self).__init__()
         self.dropout = dropout
@@ -110,11 +110,11 @@ class PoseNet(nn.Module):
                     nn.init.constant_(m.bias.data, 0)
 
         # Cost function has trainable parameters so included here
-        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-6.24)
+        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
 
     def set_target_transform(self, mean, std):
-        self.target_mean.data = mean.clone()
-        self.target_std.data = std.clone()
+        self.target_mean.data = torch.Tensor(mean)
+        self.target_std.data = torch.Tensor(std)
 
     def extract_features(self, x):
         x_features = self.feature_extractor(x)
@@ -132,6 +132,7 @@ class PoseNet(nn.Module):
         x_translations = self.fc_vect(x_features)
         x_rotations = self.fc_quat(x_features)
         x_poses = self.fix_poses(x_translations, x_rotations)
+        #x_poses = torch.cat((x_translations, x_rotations), dim=1)
 
         if self.training and len(auxs) > 0:
             aux_output = []
@@ -139,6 +140,7 @@ class PoseNet(nn.Module):
                 av = getattr(self, 'aux_v' + str(i + 1))(aux)
                 aq = getattr(self, 'aux_q' + str(i + 1))(aux)
                 ap = self.fix_poses(av, aq)
+                #ap = torch.cat((av, aq), dim=1)
                 aux_output.append(ap)
             return [x_poses] + aux_output
 
@@ -150,6 +152,15 @@ class PoseNet(nn.Module):
         rotations = F.normalize(rotations, p=2, dim=1)
         poses = torch.cat((translations, rotations), dim=1)
         return poses
+
+    # def fix_poses_np(self, poses):
+    #     std = self.target_std
+    #     mean = self.target_mean
+    #     translations = poses[:, :3] * std[:3] + mean[:3]
+    #     rotations = poses[:, 3:] * std[3:] + mean[3:]
+    #     rotations = F.normalize(rotations, p=2, dim=1)
+    #     poses = torch.cat((translations, rotations), dim=1)
+    #     return poses
 
     def cost(self, x, y):
         return self.cost_fn(x, y)
@@ -202,23 +213,23 @@ class PoseNetCriterion(nn.Module):
         return loss
 
 
-class TargetNormalizer():
-    def __init__(self, mean, std):
-        self.mean = torch.Tensor(mean)
-        self.std = torch.Tensor(std)
-
-    def __call__(self, x):
-        return (x-self.mean)/self.std
-
-    def inverse(self, x):
-        return x*self.std + self.mean
-
-    def __str__(self):
-        return 'mean: %s\nstd: %s'%(self.mean.data.detach().cpu().numpy(), self.std.data.detach().cpu().numpy())
+# class TargetNormalizer():
+#     def __init__(self, mean, std):
+#         self.mean = torch.Tensor(mean)
+#         self.std = torch.Tensor(std)
+#
+#     def __call__(self, x):
+#         return (x-self.mean)/self.std
+#
+#     def inverse(self, x):
+#         return x*self.std + self.mean
+#
+#     def __str__(self):
+#         return 'mean: %s\nstd: %s'%(self.mean.data.detach().cpu().numpy(), self.std.data.detach().cpu().numpy())
 
 
 class PoseDataset(ImageFolder):
-    def __init__(self, root, label_file, random_crop=False, target_transform=None, loader=default_loader):
+    def __init__(self, root, label_file, random_crop=False, loader=default_loader):
         self.root = root
         self.label_file = label_file
         self.transform = transforms.Compose([
@@ -228,10 +239,10 @@ class PoseDataset(ImageFolder):
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
         ])
-        self.target_transform = target_transform
+        self.target_transform = None
         self.loader = loader
         self.extensions = IMG_EXTENSIONS
-        self.imgs = self.samples = self._load_samples()
+        self.samples, self.target_mean, self.target_std = self._load_samples()
         self.targets = [s[1] for s in self.samples]
 
     def _load_samples(self):
@@ -255,9 +266,7 @@ class PoseDataset(ImageFolder):
                                 print('inexpected meta data at %s: %s' % (scene_dir, row,))
 
         samples = [(paths[i], torch.tensor(pose)) for i, pose in enumerate(poses)]
-        if self.target_transform is None:
-            self.target_transform = TargetNormalizer(np.mean(poses, axis=0), np.std(poses, axis=0))
-        return samples
+        return samples, np.mean(poses, axis=0), np.std(poses, axis=0)
 
 
 class Identity(nn.Module):

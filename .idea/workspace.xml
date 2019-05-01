@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4c2860a2-cf92-4dde-a7ea-37c3e6df60c0" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/posenet.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/posenet.py" afterDir="false" />
@@ -18,8 +17,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="149">
-              <caret line="115" selection-start-line="115" selection-end-line="115" />
+            <state relative-caret-position="-64">
+              <caret line="200" selection-start-line="200" selection-end-line="200" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -30,8 +29,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/posenet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="318">
-              <caret line="202" selection-start-line="202" selection-end-line="202" />
+            <state relative-caret-position="113">
+              <caret line="113" selection-start-line="113" selection-end-line="113" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -47,15 +46,6 @@
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/models/googlenet.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="206">
-              <caret line="159" selection-start-line="159" selection-end-line="159" />
             </state>
           </provider>
         </entry>
@@ -99,6 +89,8 @@
       <find>Parameter</find>
       <find>.targets</find>
       <find>set_target_scale</find>
+      <find>TargetNormalizer</find>
+      <find>output</find>
     </findStrings>
     <replaceStrings>
       <replace>nn</replace>
@@ -112,16 +104,16 @@
         <option value="$PROJECT_DIR$/src/PoseDataset.py" />
         <option value="$PROJECT_DIR$/src/dataset.py" />
         <option value="$PROJECT_DIR$/src/test.py" />
-        <option value="$PROJECT_DIR$/src/posenet.py" />
         <option value="$PROJECT_DIR$/src/main.py" />
+        <option value="$PROJECT_DIR$/src/posenet.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-1596" />
-    <option name="y" value="135" />
-    <option name="width" value="1384" />
-    <option name="height" value="910" />
+    <option name="x" value="197" />
+    <option name="y" value="30" />
+    <option name="width" value="3460" />
+    <option name="height" value="2100" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -129,6 +121,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -145,7 +138,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -218,7 +210,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-3 --wd 0.01 --do 0.2 -b 60 --epochs 12 --tf 3" />
+      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-4 --wd 0.0 --do 0.0 -b 60 --epochs 30 --tf 1" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -303,11 +295,10 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1596" y="135" width="1384" height="910" extended-state="0" />
-    <editor active="true" />
+    <frame x="79" y="12" width="1384" height="840" extended-state="0" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.2900302" />
+      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.2888889" />
       <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="0" />
       <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
@@ -315,8 +306,8 @@
       <window_info anchor="bottom" id="Message" order="3" />
       <window_info anchor="bottom" id="Find" order="4" />
       <window_info anchor="bottom" id="Version Control" order="5" />
-      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.40669242" />
-      <window_info anchor="bottom" id="Debug" order="7" weight="0.5894466" />
+      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.42053446" />
+      <window_info anchor="bottom" id="Debug" order="7" weight="0.51195496" />
       <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="9" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="10" />
@@ -342,13 +333,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/dataset.py" />
-    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/datasets/folder.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2108">
-          <caret line="130" column="31" selection-start-line="130" selection-start-column="31" selection-end-line="130" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/argparse.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="22916">
@@ -405,13 +389,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/models/googlenet.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="206">
-          <caret line="159" selection-start-line="159" selection-end-line="159" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/transforms/functional.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="140">
@@ -426,27 +403,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/utils/data/dataloader.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="140">
-          <caret line="657" selection-start-line="657" selection-end-line="657" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/numpy/core/fromnumeric.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="361">
           <caret line="3241" selection-start-line="3241" selection-end-line="3241" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="250">
-          <caret line="15" selection-start-line="15" selection-end-line="15" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -485,10 +445,48 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/autograd/grad_mode.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="174">
+          <caret line="32" selection-start-line="32" selection-end-line="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/utils/data/dataloader.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="140">
+          <caret line="657" selection-start-line="657" selection-end-line="657" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/datasets/folder.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="91">
+          <caret line="133" column="50" lean-forward="true" selection-start-line="133" selection-start-column="50" selection-end-line="133" selection-end-column="50" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torchvision/models/googlenet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="206">
+          <caret line="189" selection-start-line="189" selection-end-line="189" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="250">
+          <caret line="15" selection-start-line="15" selection-end-line="15" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="149">
-          <caret line="115" selection-start-line="115" selection-end-line="115" />
+        <state relative-caret-position="-64">
+          <caret line="200" selection-start-line="200" selection-end-line="200" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
@@ -497,8 +495,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/posenet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="318">
-          <caret line="202" selection-start-line="202" selection-end-line="202" />
+        <state relative-caret-position="113">
+          <caret line="113" selection-start-line="113" selection-end-line="113" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
