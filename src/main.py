@@ -122,8 +122,15 @@ def main():
     bias_params = []
     weight_params = []
     other_params = []
+    ignored = []
     for name, param in model.named_parameters():
-        if 'bias' in name:
+        if ('fc_feat' not in name and
+            'fc_quat' not in name and
+            'fc_vect' not in name and
+            'cost_fn' not in name and
+            'aux' not in name):
+            ignored.append(param)
+        elif 'bias' in name:
             bias_params.append(param)
         elif 'weight' in name:
             weight_params.append(param)

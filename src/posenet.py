@@ -111,7 +111,7 @@ class PoseNet(nn.Module):
                     nn.init.constant_(m.bias.data, 0)
 
         # Cost function has trainable parameters so included here
-        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=True, sx=0.0, sq=-3.0)
+        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=False, beta=512)#, sx=0.0, sq=-3.0)
 
     def set_target_transform(self, mean, std):
         self.target_mean.data = torch.Tensor(mean)
@@ -180,9 +180,9 @@ class PoseNetCriterion(nn.Module):
             self.sq = nn.Parameter(torch.Tensor([sq]))
             self.beta = 1.0
         else:
-            self.sx = 0.0
-            self.sq = 0.0
-            self.beta = beta
+            self.register_buffer('sq', torch.Tensor([0]))
+            self.register_buffer('sx', torch.Tensor([0]))
+            self.register_buffer('beta', torch.Tensor([beta]))
 
     def forward(self, all_x, y):
         """
