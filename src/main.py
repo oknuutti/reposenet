@@ -14,7 +14,7 @@ import torchvision
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
 
-from posenet import PoseNet, PoseNetCriterion, PoseDataset
+from posenet import PoseNet, PoseDataset
 
 
 #DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/cambridge')
@@ -83,8 +83,8 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     cudnn.benchmark = False  # uses extra mem if True
 
-    model = PoseNet(arch=args.arch, num_features=args.features, dropout=args.dropout, pretrained=True,
-                    track_running_stats=False, cache_dir=args.cache)
+    model = PoseNet(arch=args.arch, num_features=args.features, dropout=args.dropout,
+                    pretrained=True, cache_dir=args.cache)
 
     # optionally resume from a checkpoint
     best_loss = float('inf')
@@ -119,35 +119,20 @@ def main():
         validate(val_loader, model)
         return
 
-    bias_params = []
-    weight_params = []
-    other_params = []
-    ignored = []
-    for name, param in model.named_parameters():
-        if ('fc_feat' not in name and
-            'fc_quat' not in name and
-            'fc_vect' not in name and
-            'cost_fn' not in name and
-            'aux' not in name):
-            ignored.append(param)
-        elif 'bias' in name:
-            bias_params.append(param)
-        elif 'weight' in name:
-            weight_params.append(param)
-        else:
-            other_params.append(param)
-
     # initialize optimizer
     if args.optimizer == 'sgd':
         raise NotImplementedError('SGD not implemented')
         optimizer = torch.optim.SGD(bias_params, lr=args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
+    elif False and args.optimizer == 'adam':
+        optimizer = torch.optim.Adam(model.params_to_optimize(), lr=args.lr, weight_decay=args.weight_decay)
     elif args.optimizer == 'adam':
+        bias_params, weight_params, other_params = model.params_to_optimize(split=True)
         optimizer = torch.optim.Adam([
             {'params': bias_params, 'lr': args.lr * 2, 'weight_decay': args.weight_decay * 0},
             {'params': weight_params, 'lr': args.lr * 1, 'weight_decay': args.weight_decay * 1},
-            {'params': other_params, 'lr': args.lr * 10, 'weight_decay': args.weight_decay * 0},
+            {'params': other_params, 'lr': args.lr * 2, 'weight_decay': args.weight_decay * 0},
         ])
     else:
         assert False, 'Invalid optimizer: %s' % args.optimizer
@@ -199,18 +184,13 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
         input = input.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
 
-        input_var = torch.autograd.Variable(input)
-        target_var = torch.autograd.Variable(target)
-
         # measure elapsed data loading time
         data_time.update(time.time() - end)
         end = time.time()
 
         # compute output
-        output = model(input_var)
-        loss = model.cost(output, target_var)
-        if isinstance(output, (list, tuple)):
-            output = output[0]
+        output = model(input)
+        loss = model.cost(output, target)
 
         # compute gradient and optimize params
         if not validate_only:
@@ -220,18 +200,18 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
 
         # measure accuracy and record loss
         with torch.no_grad():
+            output = output[0] if isinstance(output, (list, tuple)) else output
             pos, orient = accuracy(output, target)
+
         positions.update(pos)
         orientations.update(orient)
         losses.update(loss.data)
-        #mem_usage = torch.cuda.max_memory_allocated() / 1024 ** 3  *1.13 + 0.78
-        #mem_usage = mem_usage*1.13 + 0.78  # heuristic correction
 
         # measure elapsed processing time
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % args.print_freq == 0:
+        if (i+1) % args.print_freq == 0:
             print((('Test [{1}/{2}]' if validate_only else 'Epoch: [{0}][{1}/{2}]\t') +
                   ' Load: {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   ' Proc: {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
@@ -239,7 +219,7 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
                   ' Pos: {pos.val:.3f} ({pos.median:.3f})\t'
                   ' Ori: {orient.val:.3f} ({orient.median:.3f})'
                   ' CF: ({cost_sx:.3f}, {cost_sq:.3f})').format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
+                   epoch, i+1, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses, pos=positions, orient=orientations,
                    cost_sx=float(model.cost_fn.sx.data), cost_sq=float(model.cost_fn.sq.data)))
 
@@ -254,21 +234,16 @@ def validate(val_loader, model, device):
 
 def accuracy(output, target):
     """ Computes position and orientation accuracy """
-    # batch_size = target.size(0)
-    output_np = output.detach().cpu().numpy()
-    target_np = target.detach().cpu().numpy()
-    err_pos = np.linalg.norm(output_np[:, :3] - target_np[:, :3], axis=1)
-    err_orient = angle_between_q(output_np[:, 3:], target_np[:, 3:])
+    err_pos = torch.sum((output[:, :3] - target[:, :3])**2, dim=1)**(1/2)
+    err_orient = angle_between_q(output[:, 3:], target[:, 3:])
     return err_pos, err_orient
 
 
-def angle_between_q(q1r, q2r):
-    # from  https://chrischoy.github.io/research/measuring-rotation/
-    q1 = quaternion.from_float_array(q1r)
-    q2 = quaternion.from_float_array(q2r)
-    qd = q1.conj()*q2
-    err_rad = 2*np.arccos([q.normalized().w for q in qd])
-    return np.abs((np.degrees(err_rad) + 180) % 360 - 180)
+def angle_between_q(q1, q2):
+    # from https://github.com/hazirbas/poselstm-pytorch/blob/master/models/posenet_model.py
+    abs_distance = torch.clamp(torch.abs(torch.sum(q2.mul(q1), dim=1)), 0, 1)
+    ori_err = 2 * 180 / np.pi * torch.acos(abs_distance)
+    return ori_err
 
 
 def filename_pid(filename):
@@ -359,7 +334,6 @@ class MedianMeter(object):
 
         self.recent_values = val
         self.values.extend(val)
-
 
 
 if __name__ == '__main__':

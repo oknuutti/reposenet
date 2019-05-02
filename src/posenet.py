@@ -12,13 +12,9 @@ from torchvision.datasets.folder import ImageFolder, default_loader, IMG_EXTENSI
 
 
 class PoseNet(nn.Module):
-    """ Based on https://github.com/bexcite/apolloscape-loc/models/posenet.py by Pavlo Bashmakov """
-
-    def __init__(self, arch, num_features=2048, dropout=0.0, cache_dir=None,
-                 track_running_stats=False, pretrained=False):
+    def __init__(self, arch, num_features=2048, dropout=0.0, cache_dir=None, pretrained=False):
         super(PoseNet, self).__init__()
         self.dropout = dropout
-        self.track_running_stats = track_running_stats
         self.pretrained = pretrained
         self.features = num_features
         self.register_buffer('target_mean', torch.zeros(7))
@@ -83,20 +79,11 @@ class PoseNet(nn.Module):
                 self.aux_qty = i
                 extra_init.append(p)    # auxiliary heads are not pretrained
 
-        # Should use AdaptiveAvgPool2d between fc_feat and fc_vect/fc_quat? Where in the article / which article says so?
-        # self.feature_extractor.avgpool = nn.AdaptiveAvgPool2d(1)
-
         # Translation
         self.fc_vect = nn.Linear(num_features, 3)
 
         # Rotation in quaternions
         self.fc_quat = nn.Linear(num_features, 4)
-
-        # Turns off track_running_stats for BatchNorm layers,
-        # it simplifies testing on small datasets due to eval()/train() differences
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.track_running_stats = self.track_running_stats
 
         # Initialization (feature_extractor already initialized in its __init__ method)
         init_modules = [(self.fc_feat, 0.01), (self.fc_vect, 0.5), (self.fc_quat, 0.01)] \
@@ -111,7 +98,41 @@ class PoseNet(nn.Module):
                     nn.init.constant_(m.bias.data, 0)
 
         # Cost function has trainable parameters so included here
-        self.cost_fn = PoseNetCriterion(stereo=False, learn_uncertainties=False, beta=512)#, sx=0.0, sq=-3.0)
+        self.cost_fn = PoseNetCriterion(learn_uncertainties=True, sx=0.0, sq=-3.0)
+
+    def params_to_optimize(self, split=False, only_blank=False):
+        # exclude all params from BatchNorm layers
+        np = list(self.named_parameters(recurse=False))
+        names, params = zip(*np) if len(np) > 0 else ([], [])
+        for mn, m in self.named_modules():
+            if not isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                np = list(m.named_parameters(recurse=False))
+                n, p = zip(*np) if len(np) > 0 else ([], [])
+                names.extend([mn+'.'+k for k in n])
+                params.extend(p)
+
+        if split:
+            bias_params = []
+            weight_params = []
+            other_params = []
+            for name, param in zip(names, params):
+                if only_blank and (
+                        'fc_feat' not in name and
+                        'fc_quat' not in name and
+                        'fc_vect' not in name and
+                        'cost_fn' not in name and
+                        'aux' not in name):
+                    pass
+                elif 'bias' in name:
+                    bias_params.append(param)
+                elif 'weight' in name:
+                    weight_params.append(param)
+                else:
+                    other_params.append(param)
+
+            return bias_params, weight_params, other_params
+
+        return params
 
     def set_target_transform(self, mean, std):
         self.target_mean.data = torch.Tensor(mean)
@@ -127,13 +148,10 @@ class PoseNet(nn.Module):
         return [x_features] + list(auxs)
 
     def forward(self, x):
-        # x is batch_images [batch_size x image, batch_size x image]
-
         x_features, *auxs = self.extract_features(x)
         x_translations = self.fc_vect(x_features)
         x_rotations = self.fc_quat(x_features)
         x_poses = self.fix_poses(x_translations, x_rotations)
-        #x_poses = torch.cat((x_translations, x_rotations), dim=1)
 
         if self.training and len(auxs) > 0:
             aux_output = []
@@ -141,7 +159,6 @@ class PoseNet(nn.Module):
                 av = getattr(self, 'aux_v' + str(i + 1))(aux)
                 aq = getattr(self, 'aux_q' + str(i + 1))(aux)
                 ap = self.fix_poses(av, aq)
-                #ap = torch.cat((av, aq), dim=1)
                 aux_output.append(ap)
             return [x_poses] + aux_output
 
@@ -154,25 +171,15 @@ class PoseNet(nn.Module):
         poses = torch.cat((translations, rotations), dim=1)
         return poses
 
-    # def fix_poses_np(self, poses):
-    #     std = self.target_std
-    #     mean = self.target_mean
-    #     translations = poses[:, :3] * std[:3] + mean[:3]
-    #     rotations = poses[:, 3:] * std[3:] + mean[3:]
-    #     rotations = F.normalize(rotations, p=2, dim=1)
-    #     poses = torch.cat((translations, rotations), dim=1)
-    #     return poses
-
     def cost(self, x, y):
         return self.cost_fn(x, y)
 
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, stereo=False, beta=500.0, aux_cost_coef=0.3,
-                 learn_uncertainties=False, sx=0.0, sq=-3):
+    def __init__(self, beta=500.0, aux_cost_coef=0.3, learn_uncertainties=False, sx=0.0, sq=-3.0):
         super(PoseNetCriterion, self).__init__()
-        self.stereo = stereo
-        self.loss_fn = nn.L1Loss()
+        self.loss_fn = nn.MSELoss() if False else nn.L1Loss()
+
         self.aux_cost_coef = aux_cost_coef
         self.learn_uncertainties = learn_uncertainties
         if learn_uncertainties:
@@ -185,52 +192,22 @@ class PoseNetCriterion(nn.Module):
             self.register_buffer('beta', torch.Tensor([beta]))
 
     def forward(self, all_x, y):
-        """
-        Args:
-            x: list(N x 7, N x 7) - prediction (xyz, quat)
-            y: list(N x 7, N x 7) - target (xyz, quat)
-        """
-
         if not isinstance(all_x, (list, tuple)):
             all_x = (all_x,)
 
         loss = 0
         for i, x in enumerate(all_x):
             coef = 1 if i == 0 else self.aux_cost_coef
-            if self.stereo:
-                for i in range(2):
-                    # Translation loss
-                    loss += coef * (torch.exp(-self.sx) * self.loss_fn(x[i][:, :3], y[i][:, :3]) + self.sx)
-                    # Rotation loss
-                    loss += coef * (torch.exp(-self.sq) * self.beta * self.loss_fn(x[i][:, 3:], y[i][:, 3:]) + self.sq)
 
-                # Normalize per image so we can compare stereo vs no-stereo mode
-                loss = loss / 2
-            else:
-                # Translation loss
-                loss += coef * (torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx)
+            # Translation loss
+            loss += coef * (torch.exp(-self.sx) * self.loss_fn(x[:, :3], y[:, :3]) + self.sx)
 
-                # Rotation loss
-                xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
-                yq = torch.sign(y[:, 3]).unsqueeze(1) * y[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
-                loss += coef * (torch.exp(-self.sq) * self.beta * self.loss_fn(xq, yq) + self.sq)
+            # Rotation loss
+            xq = torch.sign(x[:, 3]).unsqueeze(1) * x[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
+            yq = torch.sign(y[:, 3]).unsqueeze(1) * y[:, 3:]  # map both hemispheres of the quaternions to a single one (y done already)
+            loss += coef * (torch.exp(-self.sq) * self.beta * self.loss_fn(xq, yq) + self.sq)
 
         return loss
-
-
-# class TargetNormalizer():
-#     def __init__(self, mean, std):
-#         self.mean = torch.Tensor(mean)
-#         self.std = torch.Tensor(std)
-#
-#     def __call__(self, x):
-#         return (x-self.mean)/self.std
-#
-#     def inverse(self, x):
-#         return x*self.std + self.mean
-#
-#     def __str__(self):
-#         return 'mean: %s\nstd: %s'%(self.mean.data.detach().cpu().numpy(), self.std.data.detach().cpu().numpy())
 
 
 class PoseDataset(ImageFolder):
