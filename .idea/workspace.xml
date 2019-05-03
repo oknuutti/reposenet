@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4c2860a2-cf92-4dde-a7ea-37c3e6df60c0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/posenet.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/posenet.py" afterDir="false" />
     </list>
@@ -17,8 +16,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1309">
-              <caret line="77" lean-forward="true" selection-start-line="77" selection-end-line="77" />
+            <state relative-caret-position="270">
+              <caret line="335" selection-start-line="335" selection-end-line="335" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -29,8 +28,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/posenet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="657">
-              <caret line="193" column="32" selection-start-line="193" selection-start-column="32" selection-end-line="193" selection-end-column="32" />
+            <state relative-caret-position="263">
+              <caret line="221" selection-start-line="221" selection-end-line="221" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -41,7 +40,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="153">
+            <state relative-caret-position="250">
               <caret line="15" selection-start-line="15" selection-end-line="15" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
@@ -61,11 +60,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>in_features</find>
-      <find>adjust_learning_rate</find>
-      <find>Meter</find>
-      <find>batch_time</find>
-      <find>args</find>
       <find>self.features</find>
       <find>return train(val_loader, model, criterion, None, None, validate_only=True)</find>
       <find>validate</find>
@@ -91,6 +85,11 @@
       <find>_BatchNorm</find>
       <find>adam</find>
       <find>TargetNormalizer</find>
+      <find>-3</find>
+      <find>args.pid</find>
+      <find>optimi</find>
+      <find>BatchNorm1d</find>
+      <find>beta</find>
     </findStrings>
     <replaceStrings>
       <replace>nn</replace>
@@ -109,11 +108,11 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="225" />
-    <option name="y" value="35" />
-    <option name="width" value="3465" />
-    <option name="height" value="2100" />
+  <component name="ProjectFrameBounds">
+    <option name="x" value="402" />
+    <option name="y" value="50" />
+    <option name="width" value="3680" />
+    <option name="height" value="2080" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -210,7 +209,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a googlenet -o adam --lr 5e-4 --wd 0.05 --do 0.5 -b 50 --epochs 240 --tf 3" />
+      <option name="PARAMETERS" value="-a googlenet -o adam --lr 3e-4 --wd 0.05 --do 0.5 -b 54 --loss L1 --beta 250 --epochs 30 --tf 3 --warmup 12" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -295,20 +294,20 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-6" y="-6" width="1549" height="846" extended-state="6" />
+    <frame x="62" y="0" width="1472" height="832" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.25742576" />
+      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.16411683" />
       <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="0" />
       <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
-      <window_info anchor="bottom" id="Python Console" order="2" weight="0.36376604" />
+      <window_info anchor="bottom" id="Python Console" order="2" weight="0.36273116" />
       <window_info anchor="bottom" id="Message" order="3" />
       <window_info anchor="bottom" id="Find" order="4" />
       <window_info anchor="bottom" id="Version Control" order="5" />
-      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.22594142" />
-      <window_info anchor="bottom" id="Debug" order="7" weight="0.30125523" />
+      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.38691324" />
+      <window_info anchor="bottom" id="Debug" order="7" weight="0.30014226" />
       <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="9" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="10" />
@@ -481,16 +480,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/test.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="153">
-          <caret line="15" selection-start-line="15" selection-end-line="15" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/nn/modules/module.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="151">
@@ -498,10 +487,23 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="250">
+          <caret line="15" selection-start-line="15" selection-end-line="15" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/densenet-triton.sh">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/posenet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="657">
-          <caret line="193" column="32" selection-start-line="193" selection-start-column="32" selection-end-line="193" selection-end-column="32" />
+        <state relative-caret-position="263">
+          <caret line="221" selection-start-line="221" selection-end-line="221" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
@@ -510,8 +512,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1309">
-          <caret line="77" lean-forward="true" selection-start-line="77" selection-end-line="77" />
+        <state relative-caret-position="270">
+          <caret line="335" selection-start-line="335" selection-end-line="335" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>

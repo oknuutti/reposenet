@@ -12,11 +12,16 @@ from torchvision.datasets.folder import ImageFolder, default_loader, IMG_EXTENSI
 
 
 class PoseNet(nn.Module):
-    def __init__(self, arch, num_features=2048, dropout=0.0, cache_dir=None, pretrained=False):
+    def __init__(self, arch, num_features=2048, dropout=0.0, cache_dir=None, pretrained=False,
+                 beta=0, sx=0.0, sq=-6.0, loss='L1'):
         super(PoseNet, self).__init__()
         self.dropout = dropout
         self.pretrained = pretrained
         self.features = num_features
+        self.beta = beta
+        self.sx = sx
+        self.sq = sq
+        self.loss = loss
         self.register_buffer('target_mean', torch.zeros(7))
         self.register_buffer('target_std', torch.ones(7))
 
@@ -72,7 +77,8 @@ class PoseNet(nn.Module):
                 np = getattr(p, c)
             setattr(p, c, Identity())
             if i == 0:
-                self.fc_feat = nn.Linear(np.in_features, num_features)
+                self.fc_feat = nn.Linear(np.in_features, num_features)#, bias=False)
+                #self.fc_feat_bn = nn.BatchNorm1d(num_features)
             else:
                 setattr(self, 'aux_v'+str(i), nn.Linear(np.in_features, 3))
                 setattr(self, 'aux_q'+str(i), nn.Linear(np.in_features, 4))
@@ -98,14 +104,16 @@ class PoseNet(nn.Module):
                     nn.init.constant_(m.bias.data, 0)
 
         # Cost function has trainable parameters so included here
-        self.cost_fn = PoseNetCriterion(learn_uncertainties=True, sx=0.0, sq=-3.0)
+        self.cost_fn = PoseNetCriterion(
+            learn_uncertainties=not beta, beta=beta,
+            sx=sx, sq=sq, loss=loss)
 
-    def params_to_optimize(self, split=False, only_blank=False):
-        # exclude all params from BatchNorm layers
+    def params_to_optimize(self, split=False, only_blank=False, incl_batch_norm=True):
         np = list(self.named_parameters(recurse=False))
         names, params = zip(*np) if len(np) > 0 else ([], [])
         for mn, m in self.named_modules():
-            if not isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+            # maybe exclude all params from BatchNorm layers
+            if incl_batch_norm or not isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
                 np = list(m.named_parameters(recurse=False))
                 n, p = zip(*np) if len(np) > 0 else ([], [])
                 names.extend([mn+'.'+k for k in n])
@@ -142,6 +150,7 @@ class PoseNet(nn.Module):
         x_features = self.feature_extractor(x)
         x_features, *auxs = x_features if isinstance(x_features, tuple) else (x_features, )
         x_features = self.fc_feat(x_features)
+        #x_features = self.fc_feat_bn(x_features)
         x_features = F.relu(x_features)
         if self.dropout > 0:
             x_features = F.dropout(x_features, p=self.dropout, training=self.training)
@@ -176,9 +185,13 @@ class PoseNet(nn.Module):
 
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, beta=500.0, aux_cost_coef=0.3, learn_uncertainties=False, sx=0.0, sq=-3.0):
+    def __init__(self, beta=500.0, aux_cost_coef=0.3, loss='L1',
+                 learn_uncertainties=False, sx=0.0, sq=-6.0):
         super(PoseNetCriterion, self).__init__()
-        self.loss_fn = nn.MSELoss() if False else nn.L1Loss()
+        self.loss_fn = {
+            'l1': nn.L1Loss(),
+            'mse': nn.MSELoss(),
+        }[loss.lower()]
 
         self.aux_cost_coef = aux_cost_coef
         self.learn_uncertainties = learn_uncertainties
