@@ -108,39 +108,33 @@ class PoseNet(nn.Module):
             learn_uncertainties=not beta, beta=beta,
             sx=sx, sq=sq, loss=loss)
 
-    def params_to_optimize(self, split=False, only_blank=False, incl_batch_norm=True):
+    def params_to_optimize(self, split=False, excl_batch_norm=True):
         np = list(self.named_parameters(recurse=False))
         names, params = zip(*np) if len(np) > 0 else ([], [])
         for mn, m in self.named_modules():
             # maybe exclude all params from BatchNorm layers
-            if incl_batch_norm or not isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+            if not excl_batch_norm or not isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
                 np = list(m.named_parameters(recurse=False))
                 n, p = zip(*np) if len(np) > 0 else ([], [])
                 names.extend([mn+'.'+k for k in n])
                 params.extend(p)
 
-        if split:
-            bias_params = []
-            weight_params = []
-            other_params = []
-            for name, param in zip(names, params):
-                if only_blank and (
-                        'fc_feat' not in name and
-                        'fc_quat' not in name and
-                        'fc_vect' not in name and
-                        'cost_fn' not in name and
-                        'aux' not in name):
-                    pass
-                elif 'bias' in name:
-                    bias_params.append(param)
-                elif 'weight' in name:
-                    weight_params.append(param)
-                else:
-                    other_params.append(param)
+        new_biases, new_weights, biases, weights, others = [], [], [], [], []
+        for name, param in zip(names, params):
+            is_new = ('fc_feat' in name or 'fc_quat' in name or 'fc_vect' in name or 'cost_fn' in name or 'aux' in name)
+            if is_new and 'bias' in name:
+                new_biases.append(param)
+            elif is_new and 'weight' in name:
+                new_weights.append(param)
+            elif 'bias' in name:
+                biases.append(param)
+            elif 'weight' in name:
+                weights.append(param)
+            else:
+                others.append(param)
 
-            return bias_params, weight_params, other_params
-
-        return params
+        return (new_biases, new_weights, biases, weights, others) if split \
+                else (new_biases + new_weights + biases + weights + others)
 
     def set_target_transform(self, mean, std):
         self.target_mean.data = torch.Tensor(mean)

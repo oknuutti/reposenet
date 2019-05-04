@@ -1,4 +1,5 @@
 import argparse
+import random
 import shutil
 import os
 import time
@@ -20,7 +21,7 @@ from posenet import PoseNet, PoseDataset
 #DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/cambridge')
 DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\StMarysChurch'
 CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
-
+RND_SEED = 10
 
 # Basic structure taken from https://github.com/pytorch/examples/blob/master/imagenet/main.py
 
@@ -71,6 +72,8 @@ parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--test-freq', '--tf', default=1, type=int,
                     metavar='N', help='test frequency (default: 1)')
+parser.add_argument('--save-freq', '--sf', default=10, type=int,
+                    metavar='N', help='save frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -81,6 +84,8 @@ parser.add_argument('--warmup', default=0, type=int, metavar='N',
                     help='number of warmup epochs where only newly added layers are trained')
 parser.add_argument('--split-opt-params', default=False, action='store_true',
                     help='use different optimization params for bias, weight and loss function params')
+parser.add_argument('--excl-bn', default=False, action='store_true',
+                    help='exclude batch norm params from optimization')
 parser.add_argument('--name', '--pid', default='', type=str, metavar='NAME',
                     help='experiment name for out file names')
 
@@ -94,7 +99,9 @@ def main():
     torch.cuda.current_device()
     use_cuda = torch.cuda.is_available() and True
     device = torch.device("cuda:0" if use_cuda else "cpu")
-    cudnn.benchmark = False  # uses extra mem if True
+
+    # try to get consistent results across runs => fails, but makes runs a bit more similar
+    _set_random_seed()
 
     model = PoseNet(arch=args.arch, num_features=args.features, dropout=args.dropout,
                     pretrained=True, cache_dir=args.cache, loss=args.loss,
@@ -118,12 +125,14 @@ def main():
     trdata = PoseDataset(args.data, 'dataset_train.txt', random_crop=True)
     train_loader = DataLoader(trdata,
         batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers, pin_memory=True,
+        worker_init_fn=_worker_init_fn)
 
     val_loader = DataLoader(
         PoseDataset(args.data, 'dataset_test.txt', random_crop=False),
         batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers, pin_memory=True,
+        worker_init_fn=_worker_init_fn)
 
     model.set_target_transform(trdata.target_mean, trdata.target_std)
     model.to(device)
@@ -133,36 +142,36 @@ def main():
         validate(val_loader, model)
         return
 
-    # initialize optimizer
-    optimizer = {True: None, False: None}
-    for wu in (True, False):
-        w = 3 if wu else 1
-        if args.optimizer == 'sgd':
-            raise NotImplementedError('SGD not implemented')
-            params = model.params_to_optimize(only_blank=wu)
-            optimizer[wu] = torch.optim.SGD(params, lr=args.lr * w, momentum=args.momentum, weight_decay=args.weight_decay)
-        elif args.optimizer == 'adam':
-            if args.split_opt_params:
-                bias_params, weight_params, other_params = model.params_to_optimize(split=True, only_blank=wu)
-                optimizer[wu] = torch.optim.Adam([
-                    {'params': bias_params, 'lr': args.lr * w * 2, 'weight_decay': args.weight_decay * 0},
-                    {'params': weight_params, 'lr': args.lr * w * 1, 'weight_decay': args.weight_decay * 1},
-                    {'params': other_params, 'lr': args.lr / w * 0.2, 'weight_decay': args.weight_decay * 0},
-                ])
-            else:
-                params = model.params_to_optimize(only_blank=wu)
-                optimizer[wu] = torch.optim.Adam(params, lr=args.lr * w, weight_decay=args.weight_decay)
+    # initialize optimizer with warmup param values
+    nlr, nwd, olr, owd = (30, 30, 10, 10)
+    if args.optimizer == 'sgd':
+        raise NotImplementedError('SGD not implemented')
+        params = model.params_to_optimize(excl_batch_norm=args.excl_bn)
+        optimizer = torch.optim.SGD(params, lr=args.lr * nlr, momentum=args.momentum, weight_decay=args.weight_decay * nwd)
+    elif args.optimizer == 'adam':
+        if args.split_opt_params:
+            new_biases, new_weights, biases, weights, others = model.params_to_optimize(split=True, excl_batch_norm=args.excl_bn)
+            optimizer = torch.optim.Adam([
+                {'params': new_biases, 'lr': args.lr * nlr * 2, 'weight_decay': args.weight_decay * nwd * 0.0, 'eps': 0.1},
+                {'params': new_weights, 'lr': args.lr * nlr * 1, 'weight_decay': args.weight_decay * nwd * 1, 'eps': 0.1},
+                {'params': biases, 'lr': args.lr * olr * 2, 'weight_decay': args.weight_decay * owd * 0.0, 'eps': 0.1},
+                {'params': weights, 'lr': args.lr * olr * 1, 'weight_decay': args.weight_decay * owd * 1, 'eps': 0.1},
+                {'params': others, 'lr': 0, 'weight_decay': 0, 'eps': 0.1},
+            ])
         else:
-            assert False, 'Invalid optimizer: %s' % args.optimizer
+            params = model.params_to_optimize(excl_batch_norm=args.excl_bn)
+            optimizer = torch.optim.Adam(params, lr=args.lr * nlr, weight_decay=args.weight_decay * nwd, eps=0.1)
+    else:
+        assert False, 'Invalid optimizer: %s' % args.optimizer
 
     # training loop
     stats = np.zeros((args.epochs, 11))
     for epoch in range(args.start_epoch, args.epochs):
-        # adjust_learning_rate(optimizer, epoch)
-        opt = optimizer[epoch < args.warmup]
+        if epoch == args.warmup:
+            end_warmup(optimizer)
 
         # train for one epoch
-        lss, pos, ori = train(train_loader, model, opt, epoch, device)
+        lss, pos, ori = train(train_loader, model, optimizer, epoch, device)
         stats[epoch, :6] = [epoch, lss.avg, pos.avg, pos.median, ori.avg, ori.median]
 
         # evaluate on validation set
@@ -173,15 +182,27 @@ def main():
             # remember best loss and save checkpoint
             is_best = ori.median < best_loss
             best_loss = min(ori.median, best_loss)
-            save_checkpoint({
+
+            if is_best:
+                _save_checkpoint({
+                    'epoch': epoch + 1,
+                    'arch': args.arch,
+                    'state_dict': model.state_dict(),
+                    'best_loss': lss.avg,
+                }, True)
+        else:
+            is_best = False
+
+        if (epoch+1) % args.save_freq == 0 and not is_best:
+            _save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'best_loss': lss.avg,
-            }, is_best)
+            }, False)
 
         print('=====\n')
-    save_log(stats)
+    _save_log(stats)
 
 
 def train(train_loader, model, optimizer, epoch, device, validate_only=False):
@@ -254,41 +275,80 @@ def validate(val_loader, model, device):
 def accuracy(output, target):
     """ Computes position and orientation accuracy """
     err_pos = torch.sum((output[:, :3] - target[:, :3])**2, dim=1)**(1/2)
-    err_orient = angle_between_q(output[:, 3:], target[:, 3:])
+    err_orient = _angle_between_q(output[:, 3:], target[:, 3:])
     return err_pos, err_orient
 
 
-def angle_between_q(q1, q2):
+def _angle_between_q(q1, q2):
     # from https://github.com/hazirbas/poselstm-pytorch/blob/master/models/posenet_model.py
     abs_distance = torch.clamp(torch.abs(torch.sum(q2.mul(q1), dim=1)), 0, 1)
     ori_err = 2 * 180 / np.pi * torch.acos(abs_distance)
     return ori_err
 
 
-def filename_pid(filename):
+def _set_random_seed(seed=RND_SEED): #, fanatic=False):
+    # doesnt work even if fanatic & use_cuda
+    # if fanatic:
+    #     # if not disabled, still some variation between runs, however, makes training painfully slow
+    #     cudnn.enabled = False       # ~double time
+    # if use_cuda:
+    #     torch.cuda.manual_seed(seed)
+    #     torch.cuda.manual_seed_all(seed)
+    cudnn.deterministic = True      # 7% slower
+    cudnn.benchmark = False         # also uses extra mem if True
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def _worker_init_fn(id):
+    np.random.seed(RND_SEED)
+
+
+def _filename_pid(filename):
     ext = len(filename) - max(filename.find('.'), 0)
     return (filename[:-ext] + '_' + args.name + filename[-ext:]) if len(args.name) > 0 else filename
 
 
-def save_log(stats, filename='stats.csv'):
-    with open(filename_pid(filename), 'w', newline='') as fh:
+def _save_log(stats, filename='stats.csv'):
+    with open(_filename_pid(filename), 'w', newline='') as fh:
         w = csv.writer(fh, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
         for row in stats:
             w.writerow(row)
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename_pid(filename))
+def _save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    torch.save(state, _filename_pid(filename))
     if is_best:
-        shutil.copyfile(filename_pid(filename), filename_pid('model_best.pth.tar'))
+        shutil.copyfile(_filename_pid(filename), _filename_pid('model_best.pth.tar'))
 
 
-def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 30))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+def end_warmup(optimizer):
+    if len(optimizer.param_groups) == 1:
+        optimizer.param_groups[0]['lr'] = args.lr
+        optimizer.param_groups[0]['weight_decay'] = args.weight_decay
+        return
+
+    # new biases
+    optimizer.param_groups[0]['lr'] = args.lr * 2
+    optimizer.param_groups[0]['weight_decay'] = args.weight_decay * 0.0
+
+    # new weights
+    optimizer.param_groups[1]['lr'] = args.lr
+    optimizer.param_groups[1]['weight_decay'] = args.weight_decay
+
+    # old biases
+    optimizer.param_groups[2]['lr'] = args.lr * 2
+    optimizer.param_groups[2]['weight_decay'] = args.weight_decay * 0.0
+
+    # old weights
+    optimizer.param_groups[3]['lr'] = args.lr
+    optimizer.param_groups[3]['weight_decay'] = args.weight_decay
+
+    # others (sx, sq)
+    optimizer.param_groups[4]['lr'] = args.lr
+    optimizer.param_groups[4]['weight_decay'] = 0
 
 
 class Meter(object):

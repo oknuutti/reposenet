@@ -16,8 +16,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="270">
-              <caret line="335" selection-start-line="335" selection-end-line="335" />
+            <state relative-caret-position="255">
+              <caret line="91" lean-forward="true" selection-start-line="91" selection-end-line="91" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -28,8 +28,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/posenet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="263">
-              <caret line="221" selection-start-line="221" selection-end-line="221" />
+            <state relative-caret-position="250">
+              <caret line="115" column="19" selection-start-line="115" selection-start-column="19" selection-end-line="115" selection-end-column="19" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -60,13 +60,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>self.features</find>
-      <find>return train(val_loader, model, criterion, None, None, validate_only=True)</find>
-      <find>validate</find>
-      <find>cuda</find>
-      <find>best_loss</find>
-      <find>learn_beta</find>
-      <find>fc_xyz</find>
       <find>tensor</find>
       <find>cat</find>
       <find>torch.cat</find>
@@ -90,11 +83,21 @@
       <find>optimi</find>
       <find>BatchNorm1d</find>
       <find>beta</find>
+      <find>deterministic</find>
+      <find>validate</find>
+      <find>accuracy</find>
+      <find>_set_random_seed</find>
+      <find>deter</find>
+      <find>save_checkpoint</find>
+      <find>_params</find>
     </findStrings>
     <replaceStrings>
       <replace>nn</replace>
       <replace>fc_vect</replace>
     </replaceStrings>
+    <dirStrings>
+      <dir>C:\projects\densepose\src</dir>
+    </dirStrings>
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
@@ -109,8 +112,8 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="402" />
-    <option name="y" value="50" />
+    <option name="x" value="85" />
+    <option name="y" value="17" />
     <option name="width" value="3680" />
     <option name="height" value="2080" />
   </component>
@@ -179,7 +182,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a densenet121 -o adam --lr 1e-3 --wd 0.5 --do 0.5 -b 22 --epochs 30 --tf 3" />
+      <option name="PARAMETERS" value="-a densenet121 -o adam --lr 2e-5 --wd 0.0002 --do 0.5 -b 21 --loss L1 --beta 250 --epochs 30 --tf 3 --warmup 12 --split-opt-params" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -209,7 +212,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a googlenet -o adam --lr 3e-4 --wd 0.05 --do 0.5 -b 54 --loss L1 --beta 250 --epochs 30 --tf 3 --warmup 12" />
+      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-4 --wd 0.0002 --do 0.5 -b 54 --loss L1 --beta 250 --epochs 30 --tf 3 --warmup 12 --split-opt-params" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -217,7 +220,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="main resnet34 adam" type="PythonConfigurationType" factoryName="Python">
+    <configuration name="main resnet18 adam" type="PythonConfigurationType" factoryName="Python">
       <module name="densepose" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -239,7 +242,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a resnet34 -o adam --lr 5e-4 --wd 0.0625 --do 0.5 -b 40 --epochs 30 --tf 3" />
+      <option name="PARAMETERS" value="-a resnet18 -o adam --lr 5e-5 --wd 0.0002 --do 0.5 -b 75 --epochs 30 --tf 3 --warmup 12 --split-opt-params" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -271,7 +274,7 @@
     <list>
       <item itemvalue="Python.main densenet121 adam" />
       <item itemvalue="Python.main googlenet adam" />
-      <item itemvalue="Python.main resnet34 adam" />
+      <item itemvalue="Python.main resnet18 adam" />
       <item itemvalue="Python.test" />
     </list>
     <recent_temporary>
@@ -294,11 +297,11 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="62" y="0" width="1472" height="832" extended-state="0" />
+    <frame x="34" y="7" width="1472" height="832" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.16411683" />
+      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.16666667" />
       <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="0" />
       <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
@@ -306,14 +309,14 @@
       <window_info anchor="bottom" id="Message" order="3" />
       <window_info anchor="bottom" id="Find" order="4" />
       <window_info anchor="bottom" id="Version Control" order="5" />
-      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.38691324" />
+      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.3655761" />
       <window_info anchor="bottom" id="Debug" order="7" weight="0.30014226" />
       <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="9" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="10" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
-      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" visible="true" weight="0.14548023" />
       <window_info anchor="right" x="0" y="0" width="265" height="601" id="Documentation" order="3" side_tool="true" weight="0.32831326" />
     </layout>
   </component>
@@ -452,13 +455,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/utils/data/dataloader.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="183">
-          <caret line="767" column="8" selection-start-line="767" selection-start-column="8" selection-end-line="767" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/nn/modules/batchnorm.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="102">
@@ -500,10 +496,17 @@
     <entry file="file://$PROJECT_DIR$/densenet-triton.sh">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
+    <entry file="file://C:/ProgramData/Anaconda3/envs/densepose/Lib/site-packages/torch/utils/data/dataloader.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="131">
+          <caret line="117" selection-start-line="117" selection-end-line="117" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/posenet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="263">
-          <caret line="221" selection-start-line="221" selection-end-line="221" />
+        <state relative-caret-position="250">
+          <caret line="115" column="19" selection-start-line="115" selection-start-column="19" selection-end-line="115" selection-end-column="19" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
@@ -512,8 +515,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="335" selection-start-line="335" selection-end-line="335" />
+        <state relative-caret-position="255">
+          <caret line="91" lean-forward="true" selection-start-line="91" selection-end-line="91" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
