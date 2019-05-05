@@ -13,7 +13,7 @@ from torchvision.datasets.folder import ImageFolder, default_loader, IMG_EXTENSI
 
 class PoseNet(nn.Module):
     def __init__(self, arch, num_features=2048, dropout=0.0, cache_dir=None, pretrained=False,
-                 beta=0, sx=0.0, sq=-6.0, loss='L1'):
+                 beta=0, sx=0.0, sq=-6.0, loss='L1', excl_bn_affine=False):
         super(PoseNet, self).__init__()
         self.dropout = dropout
         self.pretrained = pretrained
@@ -102,6 +102,12 @@ class PoseNet(nn.Module):
                 nn.init.normal_(m.weight.data, 0, std)
                 if m.bias is not None:
                     nn.init.constant_(m.bias.data, 0)
+
+        if excl_bn_affine:
+            for m in self.modules():
+                if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                    nn.init.constant_(m.bias.data, 0)
+                    nn.init.constant_(m.weight.data, 1)
 
         # Cost function has trainable parameters so included here
         self.cost_fn = PoseNetCriterion(

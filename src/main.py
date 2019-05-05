@@ -104,7 +104,7 @@ def main():
     _set_random_seed()
 
     model = PoseNet(arch=args.arch, num_features=args.features, dropout=args.dropout,
-                    pretrained=True, cache_dir=args.cache, loss=args.loss,
+                    pretrained=True, cache_dir=args.cache, loss=args.loss, excl_bn_affine=args.excl_bn,
                     beta=args.beta, sx=args.sx, sq=args.sq)
 
     # optionally resume from a checkpoint
