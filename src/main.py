@@ -81,11 +81,13 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('--pretrained', dest='pretrained', default=True, action='store_true',
                     help='use pre-trained model')
 parser.add_argument('--warmup', default=0, type=int, metavar='N',
-                    help='number of warmup epochs where only newly added layers are trained')
+                    help='number of warm-up epochs where only newly added layers are trained')
 parser.add_argument('--split-opt-params', default=False, action='store_true',
                     help='use different optimization params for bias, weight and loss function params')
 parser.add_argument('--excl-bn', default=False, action='store_true',
                     help='exclude batch norm params from optimization')
+parser.add_argument('--adv-tr-eps', default=0, type=float, metavar='eps',
+                    help='use adversarial training with given epsilon')
 parser.add_argument('--name', '--pid', default='', type=str, metavar='NAME',
                     help='experiment name for out file names')
 
@@ -171,7 +173,7 @@ def main():
             end_warmup(optimizer)
 
         # train for one epoch
-        lss, pos, ori = train(train_loader, model, optimizer, epoch, device)
+        lss, pos, ori = train(train_loader, model, optimizer, epoch, device, adv_tr_eps=args.adv_tr_eps)
         stats[epoch, :6] = [epoch, lss.avg, pos.avg, pos.median, ori.avg, ori.median]
 
         # evaluate on validation set
@@ -205,7 +207,7 @@ def main():
     _save_log(stats)
 
 
-def train(train_loader, model, optimizer, epoch, device, validate_only=False):
+def train(train_loader, model, optimizer, epoch, device, validate_only=False, adv_tr_eps=0):
     data_time = Meter()
     batch_time = Meter()
     losses = Meter()
@@ -228,24 +230,34 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False):
         data_time.update(time.time() - end)
         end = time.time()
 
+        if adv_tr_eps > 0:
+            input.requires_grad = True
+
         # compute output
         output = model(input)
         loss = model.cost(output, target)
-
-        # compute gradient and optimize params
-        if not validate_only:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
 
         # measure accuracy and record loss
         with torch.no_grad():
             output = output[0] if isinstance(output, (list, tuple)) else output
             pos, orient = accuracy(output, target)
+            positions.update(pos)
+            orientations.update(orient)
+            losses.update(loss.data)
 
-        positions.update(pos)
-        orientations.update(orient)
-        losses.update(loss.data)
+        # compute gradient and optimize params
+        if not validate_only:
+            optimizer.zero_grad()
+            loss.backward()
+
+            if adv_tr_eps > 0:
+                # adversarial training sample
+                alt_input = input + adv_tr_eps * input.grad.data.sign()
+                alt_output = model(alt_input)
+                alt_loss = model.cost(alt_output, target)
+                alt_loss.backward()
+
+            optimizer.step()
 
         # measure elapsed processing time
         batch_time.update(time.time() - end)
