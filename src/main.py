@@ -8,6 +8,7 @@ import csv
 import numpy as np
 import quaternion
 import matplotlib.pyplot as plt
+import sys
 
 import torch
 import torchvision
@@ -88,6 +89,8 @@ parser.add_argument('--excl-bn', default=False, action='store_true',
                     help='exclude batch norm params from optimization')
 parser.add_argument('--adv-tr-eps', default=0, type=float, metavar='eps',
                     help='use adversarial training with given epsilon')
+parser.add_argument('--center-crop', default=False, action='store_true',
+                    help='use center crop instead of random crop for training')
 parser.add_argument('--name', '--pid', default='', type=str, metavar='NAME',
                     help='experiment name for out file names')
 
@@ -124,7 +127,7 @@ def main():
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     # Data loading code
-    trdata = PoseDataset(args.data, 'dataset_train.txt', random_crop=True)
+    trdata = PoseDataset(args.data, 'dataset_train.txt', random_crop=not args.center_crop)
     train_loader = DataLoader(trdata,
         batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True,
@@ -323,8 +326,9 @@ def _filename_pid(filename):
 
 
 def _save_log(stats, filename='stats.csv'):
-    with open(_filename_pid(filename), 'w', newline='') as fh:
+    with open(_filename_pid(filename), 'a', newline='') as fh:
         w = csv.writer(fh, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        w.writerow(' '.join(sys.args))
         w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
         for row in stats:
             w.writerow(row)

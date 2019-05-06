@@ -15,8 +15,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="226">
-              <caret line="257" column="35" lean-forward="true" selection-start-line="257" selection-start-column="35" selection-end-line="257" selection-end-column="35" />
+            <state relative-caret-position="183">
+              <caret line="127" lean-forward="true" selection-start-line="127" selection-end-line="127" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -111,7 +111,7 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="15" />
+    <option name="x" value="197" />
     <option name="width" value="3385" />
     <option name="height" value="2098" />
   </component>
@@ -210,7 +210,7 @@
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-4 --wd 0.0002 --do 0.5 -b 54 --loss L1 --beta 250 --epochs 30 --tf 3 --warmup 30 --split-opt-params --adv-tr-eps 0.01" />
+      <option name="PARAMETERS" value="-a googlenet -o adam --lr 1e-4 --wd 0.0002 --do 0.5 -b 54 --loss L1 --beta 250 --epochs 30 --tf 3 --warmup 12 --split-opt-params --adv-tr-eps 0.02" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -295,7 +295,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="6" y="0" width="1354" height="839" extended-state="0" />
+    <frame x="79" y="0" width="1354" height="839" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
@@ -513,8 +513,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="226">
-          <caret line="257" column="35" lean-forward="true" selection-start-line="257" selection-start-column="35" selection-end-line="257" selection-end-column="35" />
+        <state relative-caret-position="183">
+          <caret line="127" lean-forward="true" selection-start-line="127" selection-end-line="127" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
