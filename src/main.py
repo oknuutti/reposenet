@@ -6,8 +6,6 @@ import time
 import csv
 
 import numpy as np
-import quaternion
-import matplotlib.pyplot as plt
 import sys
 
 import torch
@@ -15,25 +13,30 @@ import torchvision
 
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 
 from posenet import PoseNet, PoseDataset
 
-
-#DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/cambridge')
-DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\StMarysChurch'
-CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
+# random seed used
 RND_SEED = 10
 
-# Basic structure taken from https://github.com/pytorch/examples/blob/master/imagenet/main.py
+# for my own convenience
+DEFAULT_DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\StMarysChurch'
+DEFAULT_CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
+
+SCRIPT_DIR = os.path.dirname(__file__)
+
+
+# Basic structure inspired by https://github.com/pytorch/examples/blob/master/imagenet/main.py
 
 model_names = sorted(name for name in torchvision.models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(torchvision.models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch PoseNet Training')
-parser.add_argument('--data', '-d', metavar='DIR', default=DATA_DIR,
+parser.add_argument('--data', '-d', metavar='DIR', default=DEFAULT_DATA_DIR,
                     help='path to dataset')
-parser.add_argument('--cache', metavar='DIR', default=CACHE_DIR,
+parser.add_argument('--cache', metavar='DIR', default=DEFAULT_CACHE_DIR,
                     help='path to cache dir')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='googlenet',
                     choices=model_names,
@@ -52,10 +55,8 @@ parser.add_argument('-b', '--batch-size', default=8, type=int,
                     metavar='N', help='mini-batch size (default: 8)')
 parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
                     metavar='LR', help='initial learning rate (default: 1e-4)')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                     help='momentum (for SGD optimizer only)')
 parser.add_argument('--optimizer', '-o', default='adam', type=str, metavar='OPT',
-                     help='optimizer [adam|sgd]', choices=('sgd', 'adam'))
+                     help='optimizer, only [adam] currently available', choices=('adam',))
 parser.add_argument('--weight-decay', '--wd', default=0.0005, type=float,
                     metavar='W', help='weight decay (default: 0)')
 parser.add_argument('--dropout', '--do', default=0, type=float,
@@ -81,8 +82,6 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default=True, action='store_true',
                     help='use pre-trained model')
-parser.add_argument('--warmup', default=0, type=int, metavar='N',
-                    help='number of warm-up epochs where only newly added layers are trained')
 parser.add_argument('--split-opt-params', default=False, action='store_true',
                     help='use different optimization params for bias, weight and loss function params')
 parser.add_argument('--excl-bn', default=False, action='store_true',
@@ -91,6 +90,8 @@ parser.add_argument('--adv-tr-eps', default=0, type=float, metavar='eps',
                     help='use adversarial training with given epsilon')
 parser.add_argument('--center-crop', default=False, action='store_true',
                     help='use center crop instead of random crop for training')
+parser.add_argument('--early-stopping', default=0, type=int, metavar='N',
+                    help='stop training, if loss on validation set does not decrease for this many epochs')
 parser.add_argument('--name', '--pid', default='', type=str, metavar='NAME',
                     help='experiment name for out file names')
 
@@ -99,118 +100,145 @@ def main():
     global args
     args = parser.parse_args()
 
-    # if dont call torch.cuda.current_device(), fails later with
+    # if don't call torch.cuda.current_device(), fails later with
     #   "RuntimeError: cuda runtime error (30) : unknown error at ..\aten\src\THC\THCGeneral.cpp:87"
     torch.cuda.current_device()
     use_cuda = torch.cuda.is_available() and True
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
-    # try to get consistent results across runs => fails, but makes runs a bit more similar
+    # try to get consistent results across runs
+    #   => currently still fails, however, makes runs a bit more consistent
     _set_random_seed()
 
+    # create model
     model = PoseNet(arch=args.arch, num_features=args.features, dropout=args.dropout,
                     pretrained=True, cache_dir=args.cache, loss=args.loss, excl_bn_affine=args.excl_bn,
                     beta=args.beta, sx=args.sx, sq=args.sq)
 
+    # create optimizer
+    #  - currently only Adam supported
+    if args.optimizer == 'adam':
+        eps = 0.1
+        if args.split_opt_params:
+            new_biases, new_weights, biases, weights, others = model.params_to_optimize(split=True, excl_batch_norm=args.excl_bn)
+            optimizer = torch.optim.Adam([
+                {'params': new_biases, 'lr': args.lr * 2, 'weight_decay': 0.0, 'eps': eps},
+                {'params': new_weights, 'lr': args.lr, 'weight_decay': args.weight_decay, 'eps': eps},
+                {'params': biases, 'lr': args.lr * 2, 'weight_decay': 0.0, 'eps': eps},
+                {'params': weights, 'lr': args.lr, 'weight_decay': args.weight_decay, 'eps': eps},
+                {'params': others, 'lr': 0, 'weight_decay': 0, 'eps': eps},
+            ])
+        else:
+            params = model.params_to_optimize(excl_batch_norm=args.excl_bn)
+            optimizer = torch.optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay, eps=eps)
+    else:
+        assert False, 'Invalid optimizer: %s' % args.optimizer
+
     # optionally resume from a checkpoint
     best_loss = float('inf')
+    best_epoch = -1
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
+            best_epoch = checkpoint['best_epoch']
             best_loss = checkpoint['best_loss']
-            model.load_state_dict(checkpoint['state_dict'])
+            model.load_state_dict(checkpoint['model'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
-    # Data loading code
-    trdata = PoseDataset(args.data, 'dataset_train.txt', random_crop=not args.center_crop)
-    train_loader = DataLoader(trdata,
-        batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True,
-        worker_init_fn=_worker_init_fn)
-
-    val_loader = DataLoader(
-        PoseDataset(args.data, 'dataset_test.txt', random_crop=False),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True,
-        worker_init_fn=_worker_init_fn)
-
-    model.set_target_transform(trdata.target_mean, trdata.target_std)
+    # define overall training dataset, set output normalization, load model to gpu
+    all_tr_data = PoseDataset(args.data, 'dataset_train.txt', random_crop=not args.center_crop)
+    model.set_target_transform(all_tr_data.target_mean, all_tr_data.target_std)
     model.to(device)
+
+    # split overall training data to training and validation sets
+    # validation set is used for early stopping, or possibly in future for hyper parameter optimization
+    lengths = [round(len(all_tr_data) * 0.75), round(len(all_tr_data) * 0.25)]
+    tr_data, val_data = torch.utils.data.random_split(all_tr_data, lengths)
+
+    # define data loaders
+    train_loader = DataLoader(tr_data, batch_size=args.batch_size, num_workers=args.workers,
+                              shuffle=True, pin_memory=True, worker_init_fn=_worker_init_fn)
+
+    val_loader = DataLoader(val_data, batch_size=args.batch_size, num_workers=args.workers,
+                            shuffle=True, pin_memory=True, worker_init_fn=_worker_init_fn)
+
+    test_loader = DataLoader(PoseDataset(args.data, 'dataset_test.txt', random_crop=False),
+                             batch_size=args.batch_size, num_workers=args.workers,
+                             shuffle=False, pin_memory=True, worker_init_fn=_worker_init_fn)
 
     # evaluate model only
     if args.evaluate:
-        validate(val_loader, model)
+        validate(test_loader, model)
         return
 
-    # initialize optimizer with warmup param values
-    nlr, nwd, olr, owd = (30, 30, 10, 10)
-    if args.optimizer == 'sgd':
-        raise NotImplementedError('SGD not implemented')
-        params = model.params_to_optimize(excl_batch_norm=args.excl_bn)
-        optimizer = torch.optim.SGD(params, lr=args.lr * nlr, momentum=args.momentum, weight_decay=args.weight_decay * nwd)
-    elif args.optimizer == 'adam':
-        if args.split_opt_params:
-            new_biases, new_weights, biases, weights, others = model.params_to_optimize(split=True, excl_batch_norm=args.excl_bn)
-            optimizer = torch.optim.Adam([
-                {'params': new_biases, 'lr': args.lr * nlr * 2, 'weight_decay': args.weight_decay * nwd * 0.0, 'eps': 0.1},
-                {'params': new_weights, 'lr': args.lr * nlr * 1, 'weight_decay': args.weight_decay * nwd * 1, 'eps': 0.1},
-                {'params': biases, 'lr': args.lr * olr * 2, 'weight_decay': args.weight_decay * owd * 0.0, 'eps': 0.1},
-                {'params': weights, 'lr': args.lr * olr * 1, 'weight_decay': args.weight_decay * owd * 1, 'eps': 0.1},
-                {'params': others, 'lr': 0, 'weight_decay': 0, 'eps': 0.1},
-            ])
-        else:
-            params = model.params_to_optimize(excl_batch_norm=args.excl_bn)
-            optimizer = torch.optim.Adam(params, lr=args.lr * nlr, weight_decay=args.weight_decay * nwd, eps=0.1)
-    else:
-        assert False, 'Invalid optimizer: %s' % args.optimizer
-
     # training loop
-    stats = np.zeros((args.epochs, 11))
     for epoch in range(args.start_epoch, args.epochs):
-        if epoch == args.warmup:
-            end_warmup(optimizer)
-
         # train for one epoch
-        lss, pos, ori = train(train_loader, model, optimizer, epoch, device, adv_tr_eps=args.adv_tr_eps)
-        stats[epoch, :6] = [epoch, lss.avg, pos.avg, pos.median, ori.avg, ori.median]
+        lss, pos, ori = process(train_loader, model, optimizer, epoch, device, adv_tr_eps=args.adv_tr_eps)
+        stats = np.zeros(16)
+        stats[:6] = [epoch, lss.avg, pos.avg, pos.median, ori.avg, ori.median]
 
         # evaluate on validation set
         if (epoch+1) % args.test_freq == 0:
             lss, pos, ori = validate(val_loader, model, device)
-            stats[epoch, 6:] = [lss.avg, pos.avg, pos.median, ori.avg, ori.median]
+            stats[6:11] = [lss.avg, pos.avg, pos.median, ori.avg, ori.median]
 
             # remember best loss and save checkpoint
-            is_best = ori.median < best_loss
-            best_loss = min(ori.median, best_loss)
+            is_best = lss.avg < best_loss
+            best_epoch = epoch if is_best else best_epoch
+            best_loss = lss.avg if is_best else best_loss
 
+            # save best model
             if is_best:
                 _save_checkpoint({
                     'epoch': epoch + 1,
+                    'best_epoch': best_epoch,
+                    'best_loss': best_loss,
                     'arch': args.arch,
-                    'state_dict': model.state_dict(),
-                    'best_loss': lss.avg,
+                    'model': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
                 }, True)
         else:
             is_best = False
 
+        # maybe save a checkpoint even if not best model
         if (epoch+1) % args.save_freq == 0 and not is_best:
             _save_checkpoint({
                 'epoch': epoch + 1,
+                'best_epoch': best_epoch,
+                'best_loss': best_loss,
                 'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'best_loss': lss.avg,
+                'model': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
             }, False)
 
+        # evaluate on test set if best yet result on validation set
+        if is_best:
+            lss, pos, ori = validate(test_loader, model, device)
+            stats[11:] = [lss.avg, pos.avg, pos.median, ori.avg, ori.median]
+
+        # add row to log file
+        _save_log(stats, epoch == 0)
+
+        # early stopping
+        if args.early_stopping > 0 and epoch - best_epoch >= args.early_stopping:
+            print('=====\nEARLY STOPPING CRITERION MET (%d epochs since best validation loss)' % args.early_stopping)
+            break
+
         print('=====\n')
-    _save_log(stats)
+
+    if epoch+1 == args.epochs:
+        print('MAX EPOCHS (%d) REACHED' % args.epochs)
+    print('BEST VALIDATION LOSS: %.3f' % best_loss)
 
 
-def train(train_loader, model, optimizer, epoch, device, validate_only=False, adv_tr_eps=0):
+def process(loader, model, optimizer, epoch, device, validate_only=False, adv_tr_eps=0):
     data_time = Meter()
     batch_time = Meter()
     losses = Meter()
@@ -225,7 +253,7 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False, ad
         model.train()
 
     end = time.time()
-    for i, (input, target) in enumerate(train_loader):
+    for i, (input, target) in enumerate(loader):
         input = input.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
 
@@ -266,7 +294,7 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False, ad
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if (i+1) % args.print_freq == 0 or i+1 == len(train_loader):
+        if (i+1) % args.print_freq == 0 or i+1 == len(loader):
             print((('Test [{1}/{2}]' if validate_only else 'Epoch: [{0}][{1}/{2}]\t') +
                   ' Load: {data_time.pop_recent:.3f} ({data_time.avg:.3f})\t'
                   ' Proc: {batch_time.pop_recent:.3f} ({batch_time.avg:.3f})\t'
@@ -274,16 +302,16 @@ def train(train_loader, model, optimizer, epoch, device, validate_only=False, ad
                   ' Pos: {pos.pop_recent:.3f} ({pos.median:.3f})\t'
                   ' Ori: {orient.pop_recent:.3f} ({orient.median:.3f})'
                   ' CF: ({cost_sx:.3f}, {cost_sq:.3f})').format(
-                   epoch, i+1, len(train_loader), batch_time=batch_time,
+                   epoch, i+1, len(loader), batch_time=batch_time,
                    data_time=data_time, loss=losses, pos=positions, orient=orientations,
                    cost_sx=float(model.cost_fn.sx.data), cost_sq=float(model.cost_fn.sq.data)))
 
     return losses, positions, orientations
 
 
-def validate(val_loader, model, device):
+def validate(test_loader, model, device):
     with torch.no_grad():
-        result = train(val_loader, model, None, None, device, validate_only=True)
+        result = process(test_loader, model, None, None, device, validate_only=True)
     return result
 
 
@@ -322,49 +350,29 @@ def _worker_init_fn(id):
 
 def _filename_pid(filename):
     ext = len(filename) - max(filename.find('.'), 0)
-    return (filename[:-ext] + '_' + args.name + filename[-ext:]) if len(args.name) > 0 else filename
+    filename = (filename[:-ext] + '_' + args.name + filename[-ext:]) if len(args.name) > 0 else filename
+    return os.path.join(SCRIPT_DIR, '..', filename)
 
 
-def _save_log(stats, filename='stats.csv'):
+def _save_log(stats, write_header, filename='stats.csv'):
     with open(_filename_pid(filename), 'a', newline='') as fh:
         w = csv.writer(fh, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        w.writerow(' '.join(sys.argv))
-        w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
-        for row in stats:
-            w.writerow(row)
+
+        # maybe write header
+        if write_header:
+            w.writerow([' '.join(sys.argv)])
+            w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med',
+                                 'val_loss', 'val_err_v_avg', 'val_err_v_med', 'val_err_q_avg', 'val_err_q_med',
+                                 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
+
+        # write stats one epoch at a time
+        w.writerow(stats)
 
 
 def _save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, _filename_pid(filename))
     if is_best:
         shutil.copyfile(_filename_pid(filename), _filename_pid('model_best.pth.tar'))
-
-
-def end_warmup(optimizer):
-    if len(optimizer.param_groups) == 1:
-        optimizer.param_groups[0]['lr'] = args.lr
-        optimizer.param_groups[0]['weight_decay'] = args.weight_decay
-        return
-
-    # new biases
-    optimizer.param_groups[0]['lr'] = args.lr * 2
-    optimizer.param_groups[0]['weight_decay'] = args.weight_decay * 0.0
-
-    # new weights
-    optimizer.param_groups[1]['lr'] = args.lr
-    optimizer.param_groups[1]['weight_decay'] = args.weight_decay
-
-    # old biases
-    optimizer.param_groups[2]['lr'] = args.lr * 2
-    optimizer.param_groups[2]['weight_decay'] = args.weight_decay * 0.0
-
-    # old weights
-    optimizer.param_groups[3]['lr'] = args.lr
-    optimizer.param_groups[3]['weight_decay'] = args.weight_decay
-
-    # others (sx, sq)
-    optimizer.param_groups[4]['lr'] = args.lr
-    optimizer.param_groups[4]['weight_decay'] = 0
 
 
 class Meter(object):

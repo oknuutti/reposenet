@@ -98,7 +98,6 @@ class PoseNet(nn.Module):
 
         for (m, std) in init_modules:
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                #nn.init.kaiming_normal_(m.weight.data)
                 nn.init.normal_(m.weight.data, 0, std)
                 if m.bias is not None:
                     nn.init.constant_(m.bias.data, 0)
@@ -109,7 +108,7 @@ class PoseNet(nn.Module):
                     nn.init.constant_(m.bias.data, 0)
                     nn.init.constant_(m.weight.data, 1)
 
-        # Cost function has trainable parameters so included here
+        # Cost function might have trainable parameters, included here
         self.cost_fn = PoseNetCriterion(
             learn_uncertainties=not beta, beta=beta,
             sx=sx, sq=sq, loss=loss)
@@ -150,7 +149,6 @@ class PoseNet(nn.Module):
         x_features = self.feature_extractor(x)
         x_features, *auxs = x_features if isinstance(x_features, tuple) else (x_features, )
         x_features = self.fc_feat(x_features)
-        #x_features = self.fc_feat_bn(x_features)
         x_features = F.relu(x_features)
         if self.dropout > 0:
             x_features = F.dropout(x_features, p=self.dropout, training=self.training)
@@ -185,7 +183,7 @@ class PoseNet(nn.Module):
 
 
 class PoseNetCriterion(nn.Module):
-    def __init__(self, beta=500.0, aux_cost_coef=0.3, loss='L1',
+    def __init__(self, beta=250.0, aux_cost_coef=0.3, loss='L1',
                  learn_uncertainties=False, sx=0.0, sq=-6.0):
         super(PoseNetCriterion, self).__init__()
         self.loss_fn = {

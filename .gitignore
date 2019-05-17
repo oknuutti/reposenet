@@ -1,4 +1,3 @@
-syntax: glob
 references/
 output/
 .idea/workspace.xml
