@@ -23,9 +23,7 @@ RND_SEED = 10
 # for my own convenience
 DEFAULT_DATA_DIR = 'd:\\projects\\densepose\\data\\cambridge\\StMarysChurch'
 DEFAULT_CACHE_DIR = 'd:\\projects\\densepose\\data\\models'
-
-SCRIPT_DIR = os.path.dirname(__file__)
-
+DEFAULT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'output')
 
 # Basic structure inspired by https://github.com/pytorch/examples/blob/master/imagenet/main.py
 
@@ -38,6 +36,8 @@ parser.add_argument('--data', '-d', metavar='DIR', default=DEFAULT_DATA_DIR,
                     help='path to dataset')
 parser.add_argument('--cache', metavar='DIR', default=DEFAULT_CACHE_DIR,
                     help='path to cache dir')
+parser.add_argument('--output', metavar='DIR', default=DEFAULT_OUTPUT_DIR,
+                    help='path to output dir')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='googlenet',
                     choices=model_names,
                     help='model architecture: ' +
@@ -99,6 +99,7 @@ parser.add_argument('--name', '--pid', default='', type=str, metavar='NAME',
 def main():
     global args
     args = parser.parse_args()
+    os.makedirs(args.output, exist_ok=True)
 
     # if don't call torch.cuda.current_device(), fails later with
     #   "RuntimeError: cuda runtime error (30) : unknown error at ..\aten\src\THC\THCGeneral.cpp:87"
@@ -351,7 +352,7 @@ def _worker_init_fn(id):
 def _filename_pid(filename):
     ext = len(filename) - max(filename.find('.'), 0)
     filename = (filename[:-ext] + '_' + args.name + filename[-ext:]) if len(args.name) > 0 else filename
-    return os.path.join(SCRIPT_DIR, '..', filename)
+    return os.path.join(args.output, filename)
 
 
 def _save_log(stats, write_header, filename='stats.csv'):
