@@ -328,7 +328,7 @@ def _filename_pid(filename):
 def _save_log(stats, filename='stats.csv'):
     with open(_filename_pid(filename), 'a', newline='') as fh:
         w = csv.writer(fh, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        w.writerow(' '.join(sys.args))
+        w.writerow(' '.join(sys.argv))
         w.writerow(['epoch', 'tr_loss', 'tr_err_v_avg', 'tr_err_v_med', 'tr_err_q_avg', 'tr_err_q_med', 'tst_loss', 'tst_err_v_avg', 'tst_err_v_med', 'tst_err_q_avg', 'tst_err_q_med'])
         for row in stats:
             w.writerow(row)
