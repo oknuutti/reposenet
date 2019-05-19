@@ -4,18 +4,18 @@ import shutil
 import os
 import time
 import csv
-
-import numpy as np
 import sys
 
-import torch
-import torchvision
+import numpy as np
+from PIL import Image
 
+import torch
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
+import torchvision
 
 from posenet import PoseNet, PoseDataset
+
 
 # random seed used
 RND_SEED = 10
@@ -88,6 +88,8 @@ parser.add_argument('--excl-bn', default=False, action='store_true',
                     help='exclude batch norm params from optimization')
 parser.add_argument('--adv-tr-eps', default=0, type=float, metavar='eps',
                     help='use adversarial training with given epsilon')
+parser.add_argument('--save-adv-img', default=None, type=str, metavar='FILE',
+                    help='save first adversarial training image to given file')
 parser.add_argument('--center-crop', default=False, action='store_true',
                     help='use center crop instead of random crop for training')
 parser.add_argument('--early-stopping', default=0, type=int, metavar='N',
@@ -151,6 +153,7 @@ def main():
                   .format(args.resume, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
+            quit()
 
     # define overall training dataset, set output normalization, load model to gpu
     all_tr_data = PoseDataset(args.data, 'dataset_train.txt', random_crop=not args.center_crop)
@@ -285,6 +288,11 @@ def process(loader, model, optimizer, epoch, device, validate_only=False, adv_tr
             if adv_tr_eps > 0:
                 # adversarial training sample
                 alt_input = input + adv_tr_eps * input.grad.data.sign()
+
+                if args.save_adv_img and i == 0:
+                    # maybe save that img
+                    _save_adv_img(input, input.grad.data, alt_input)
+
                 alt_output = model(alt_input)
                 alt_loss = model.cost(alt_output, target)
                 alt_loss.backward()
@@ -353,6 +361,21 @@ def _filename_pid(filename):
     ext = len(filename) - max(filename.find('.'), 0)
     filename = (filename[:-ext] + '_' + args.name + filename[-ext:]) if len(args.name) > 0 else filename
     return os.path.join(args.output, filename)
+
+
+def _save_adv_img(orig_img, grad, adv_img):
+    orig_img = _scale_img(orig_img[0, :, :, :].detach().cpu().numpy().transpose((1, 2, 0)))
+    grad_img = _scale_img(grad.data[0, :, :, :].detach().cpu().numpy().transpose((1, 2, 0)))
+    adv_img = _scale_img(adv_img[0, :, :, :].detach().cpu().numpy().transpose((1, 2, 0)))
+
+    img = np.hstack((orig_img, grad_img, adv_img))
+    result = Image.fromarray(img)
+    result.save(_filename_pid(args.save_adv_img))
+
+
+def _scale_img(arr):
+    a, b = np.min(arr), np.max(arr)
+    return (255*(arr - a) / (b - a)).astype('uint8')
 
 
 def _save_log(stats, write_header, filename='stats.csv'):
