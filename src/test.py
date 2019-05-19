@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
+# NOTE: testing of random stuff here, please ignore
+
+
 def main(poses2, poses13):
     q2 = quaternion.from_float_array(poses2[:,[3,4,5,6]])
     q13 = quaternion.from_float_array(poses13[:,[3,4,5,6]])

@@ -167,7 +167,7 @@ def main():
                               shuffle=True, pin_memory=True, worker_init_fn=_worker_init_fn)
 
     val_loader = DataLoader(val_data, batch_size=args.batch_size, num_workers=args.workers,
-                            shuffle=True, pin_memory=True, worker_init_fn=_worker_init_fn)
+                            shuffle=False, pin_memory=True, worker_init_fn=_worker_init_fn)
 
     test_loader = DataLoader(PoseDataset(args.data, 'dataset_test.txt', random_crop=False),
                              batch_size=args.batch_size, num_workers=args.workers,
